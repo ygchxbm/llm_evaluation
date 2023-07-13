@@ -5,7 +5,7 @@
 			<el-scrollbar class="flex-auto up-part-menu" ref="layoutAsideScrollbarRef" @mouseenter="onAsideEnterLeave(true)" @mouseleave="onAsideEnterLeave(false)">
 				<Vertical :menuList="menuList" />
 			</el-scrollbar>
-			<div class="foot" @click="showSetting"><el-icon style="margin-right: 6px;"><Warning /></el-icon>Game Profile</div>
+			<!-- <div class="foot" @click="showSetting"><el-icon style="margin-right: 6px;"><Warning /></el-icon>Game Profile</div> -->
 		</el-aside>
 
 		<el-dialog width="80%" style="max-width: 100%" v-model="settingVisible" title="Game Profile" :close-on-click-modal="false">
@@ -42,7 +42,7 @@ import Vertical from '@/layout/navMenu/vertical.vue';
 import { constantRoutes } from '@/router/route';
 import { RouteRecordRaw } from 'vue-router';
 import { MenuItem } from '@/stores/interface';
-import { npcList, getSetting, saveSetting } from '@/api';
+import { npcList, getSetting, saveSetting, questionList } from '@/api';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import router from '../../router';
 import { Warning, Menu } from '@element-plus/icons-vue';
@@ -60,12 +60,17 @@ export default defineComponent({
 		const state = reactive({
 			menuList: [
 				{
-					path: '/npc/all',
-					meta: { title: 'Show All' },
+					path: '/llm/index',
+					meta: { title: '首页' },
 				},
 				{
-					path: '/npc/tree',
-					meta: { title: 'Character Tree' },
+					path: '/llm/history',
+					meta: { title: '我的测评' },
+					children: [],
+				},
+				{
+					path: '/llm/group',
+					meta: { title: '题库管理' },
 					children: [],
 				},
 			] as MenuItem[],
@@ -234,6 +239,31 @@ export default defineComponent({
 			});
 		}
 
+		function loadQuestion() {
+			questionList().then((questions) => {
+				const menus: MenuItem[] = [];
+				const hash = {};
+				questions.forEach(x => hash[x.id] = {
+					path: `/npc/${x.id}`,
+					children: [],
+					meta: {
+						id: x.id,
+						title: x.name,
+					},
+				});
+				questions.forEach(x => {
+					if(+x.parent_id === 0) {
+						menus.push(hash[x.id])
+					} else if(hash[x.parent_id]) {
+						hash[x.parent_id].children.push(hash[x.id]);
+					} else {
+						console.error('not found npc', x.parent_id);
+					}
+				});
+				state.menuList[1].children = menus;
+			});
+		}
+
 		function loadSetting() {
 			getSetting().then(res => state.setting = res);
 		}
@@ -250,7 +280,7 @@ export default defineComponent({
 				console.error('saveSetting', e);
 			})
 		}
-
+		loadQuestion();
 		loadNpcs();
 		loadSetting();
 
@@ -271,8 +301,9 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 	.layout-aside {
-		background: url('@/assets/bg.png');
+		background: #232e4eff;
 		background-size: 100% auto;
+		
 	}
 	.foot {
 		opacity: 0.7;

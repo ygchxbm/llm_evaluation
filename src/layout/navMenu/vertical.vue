@@ -89,17 +89,20 @@ export default defineComponent({
 .menu {
 	border: none;
 	:deep(.el-menu-item) {
+		margin-top:15px;
 		color: #fff;
 		font-size: 18px;
 		.menu-icon {
+			margin-top: 40px;
 			margin-right: 15px;
 		}
 		span {
+			text-align: center;
 			color: #fff;
 		}
 	}
 	:deep(.el-sub-menu__title){
-		color: #fff;
+		color: #ffffffb3;
 		font-size: 18px;
 	}
 	:deep(.el-menu-item.is-active) {

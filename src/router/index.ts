@@ -28,7 +28,7 @@ router.beforeEach(async (to, from, next) => {
 		return;
 	}
 	const { userInfos } = storeToRefs(store);
-	// console.log(userInfos.value);
+	console.log(userInfos.value);
 	if (userInfos.value.name) {
 		next();
 	} else {
@@ -41,7 +41,8 @@ router.beforeEach(async (to, from, next) => {
 			}
 		} catch (error) {
 			console.error(error);
-			next('/401');
+			// next('/401');
+			next();
 			NProgress.done();
 		}
 	}

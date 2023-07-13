@@ -28,9 +28,12 @@ export default defineComponent({
 <style scoped lang="scss">
 .layout-logo {
 	text-align: center;
-	padding: 32px 0 45px;
+	// padding: 32px 0 45px;
+	margin-top: 40px;
+		
 	.logo {
-		width: 200px;
+		width: 139px;
+		height:41px
 	}
 }
 </style>

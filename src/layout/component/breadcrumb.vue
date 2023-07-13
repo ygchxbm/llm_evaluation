@@ -1,11 +1,12 @@
 <template>
 	<div v-if="isShowBreadcrumb" class="layout-navbars-breadcrumb">
-		<SvgIcon
+		首页 > 发起评测
+		<!-- <SvgIcon
 			class="layout-navbars-breadcrumb-icon"
 			:name="themeConfig.isCollapse ? 'ele-Expand' : 'ele-Fold'"
 			:size="20"
 			@click="onThemeConfigChange"
-		/>
+		/> -->
 	</div>
 </template>
 
@@ -51,10 +52,21 @@ export default defineComponent({
 
 <style scoped lang="scss">
 .layout-navbars-breadcrumb {
+	margin-left: 50px;
 	flex: 1;
 	height: inherit;
 	display: flex;
+	margin-top: 20px;
+	width: 112px;
+	height: 40px;
 	align-items: center;
+	color: #00000066;
+	font-size: 14px;
+	font-weight: 400;
+	font-family: "PingFang SC";
+	text-align: left;
+	line-height: 22px;
+	
 	.layout-navbars-breadcrumb-icon {
 		cursor: pointer;
 		font-size: 18px;

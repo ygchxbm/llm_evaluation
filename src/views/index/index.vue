@@ -1,173 +1,55 @@
 <template>
-	<div class="main">
+	<div v-if="title==='index'||title==='myEvaluate'" class="main">
 		<div class="head">
-			<div class="title">{{title}}</div>
-			<el-button type="primary" class="create-btn" @click="goProfile(0)"><el-icon style="marign: 0 20px 0 16px;"><Plus /></el-icon>Create a new character</el-button>
+			<el-button type="primary" class="create-btn" @click="startEvaluation()">发起评测</el-button>
 		</div>
-		<div class="npclist">
-			<template v-for="(npcs, k) in npcGroups">
-				<div class="npc" :class="{current: k===0}" v-for="npc in npcs" :key="npc.id" @mouseleave="operMore = false" @click="goNpc(npc.id, k)">
-					<img :src="npc.poster" class="poster" />
-					<div class="name">
-						<el-icon v-if="+npc.train_status === 1 || +npc.train_status === 3" title="Train Data Modified, Not Trained Yet."><ChatDotRound /></el-icon> 
-						<el-icon v-if="+npc.train_status === 2" title="Training..."><Lock /></el-icon>
-						{{npc.name}}
-					</div>
-					<div v-if="k > 0 && npc.children.length" class="folder-wrap">
-						<div class="folder-mask"></div>
-						<img :src="FolderIcon" class="folder-icon" />
-					</div>
-					<div v-else class="oper">
-						<div class="oper-bg"></div>
-						<template v-if="!operMore">
-							<div class="btn" @click="chatNow(npc.id)">Chat</div>
-							<div class="btn" @click="trainNow(npc.id)">Training</div>
-							<div class="btn" @click="operMore = true">More</div>
-						</template>
-						<template v-else>
-							<div class="btn" @click="goProfile(0, npc.id)">Derive</div>
-							<div class="btn" @click="goProfile(npc.id)">Profile</div>
-							<div class="btn">History</div>
-							<div class="btn danger" @click="handleDeleteNpc(npc.id)">Delete</div>
-						</template>
-					</div>
-				</div>
-			</template>
+			<table class="modelGradeTable">
+			<tbody >
+				<tr>
+      				<th class="modelNameCell">标题1</th>
+      				<th class="dimensionCell">标题2</th>
+      				<th class="dimensionCell">标题3</th>
+      				<th class="dimensionCell">标题4</th>
+					<th class="dimensionCell">标题3</th>
+      				<th class="dimensionCell">总评分</th>
+      				<th v-if="title==='index'" class="judgeCell">评价</th>
+					<th v-else-if="title==='myEvaluate'" class="operationCell">操作</th>
+    			</tr>
+				<tr v-for="(item, index) in modelGrade" :key="index">
+					<th v-for="(field, key) in item" :key="key" class="modelNameCell">
+						<span >{{ field }}</span>
+					</th>
+					<th  v-if="!isjudging[index]&&!judgeContent[index]&&title==='index'" class="judgeCell" @click="startJudge(index)"><el-icon><EditPen /></el-icon></th>
+					<th v-else-if="isjudging[index]&&title==='index'"	class="judgeCell">
+						<input type="text" class="inputSquare" v-model="judgeContent[index]">
+						<el-button class="inputBtn" @click="saveJudge(index)">Save</el-button>
+					</th>  
+					<th  v-else-if="title==='myEvaluate'" class="operationCell" ><el-icon @click="shareTable(index)"><Share /></el-icon><span @click="shareTable(index)" style="margin: 0 10px;">分享</span><el-icon @click="deleteTable(index)"><Delete /></el-icon><span @click="shareTable(index)" style="margin: 0 10px;">删除</span></th>
+					<th v-else-if="isjudging[index]&&title==='index'"	class="judgeCell">
+						<input type="text" class="inputSquare" v-model="judgeContent[index]">
+						<el-button class="inputBtn" @click="saveJudge(index)">Save</el-button>
+					</th>  
+					<th v-else-if="!isjudging[index]&&judgeContent[index]&&title==='index'" class="judgeCell" @click="startJudge(index)">{{ judgeContent[index] }}</th>  
+				</tr>
+			</tbody>
+			</table>
+		
+	</div>
+	<div v-else class="managementMain">
+        <button class="import-btn" @click="importGroup()">导入题库</button>
+		<div class="indexSquare">
+			<span v-for="groupItem in questionGroupList" :class="{ 'active': groupItem[0].id===currentGroupId  }" class="indexForGroup" @click="chooseGroup(groupItem)">{{ groupItem[0].id }}</span>
 		</div>
-		<el-dialog width="800" style="max-width: 100%" class="chat-dialog" v-model="chatVisible" :close-on-click-modal="false">
-			<template #header>
-				<div class="chat-header">
-					<div class="info">
-						<img class="avatar" :src="curNpc.avatar || DefaultAvatar" />
-						<span class="title">Chat :</span>Character {{ curNpc.parents ? curNpc.parents.join(' / ') : '' }} / {{curNpc.name}}
-					</div>
-					<div class="info">
-						LLM-Model:
-						<el-select v-model="chatModel" style="margin-left: 8px;">
-							<el-option value="default" label="Default"></el-option>
-							<el-option value="gpt" label="ChatGPT"></el-option>
-						</el-select>
-					</div>
-				</div>
-			</template>
-			<div class="chat-wrap">
-				<div v-for="(message, rindex) in messages" :key="rindex" class="mitem" :class="{ 'from-me': message.role === 'user' }">
-					<div class="message">
-						<div class="content" :class="{ inputing: messageInputing === rindex}">{{message.content}}</div>
-						<div class="oper" v-if="message.role !== 'user'">
-							<el-icon class="micon mbtn" title="Copy Original Text" @click="copyMessage(rindex)"><DocumentCopy /></el-icon>
-							<el-icon class="micon mbtn" :class="{liked: messageLiked(rindex, true)}" :title="messageLiked(rindex, true) ? 'Liked' : 'Like'" @click="hLikeMessage(rindex, true)">
-								<svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
-							</el-icon>
-							<el-icon class="micon mbtn" :class="{liked: messageLiked(rindex, false)}" :title="messageLiked(rindex, false) ? 'Disliked' : 'Dislike'" @click="hLikeMessage(rindex, false)">
-								<svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>
-							</el-icon>
-						</div>
-					</div>
-				</div>
-				<div class="sbottom" :ref="setRef('bottomDom')"></div>
+		<div class="content">
+			<div v-if="importSuccess" id="success-box"><span class="iconPng"></span>导入成功</div>
+			<h1 class="pageName">模型 题库</h1>
+			<div class="deleteGroup" @click="deleteQuestionGroup(questionItem)"><el-icon><Delete /></el-icon></div>
+			<div v-for="questionItem in questionGroups" class="questionGroupList">
+				<div class="questionName">{{ questionItem.id }} {{ questionItem.question }}</div>
+				<div class="questionDimension">{{ questionItem.dimension }}</div>
+				<div class="referenceAnswer">{{ questionItem.standard_answer }}</div>
 			</div>
-			<template #footer>
-				<div class="chat-footer">
-					<textarea
-						placeholder="Send a message..."
-						:rows="userInput.split('\n').length || 1"
-						@keydown="inputMessage" @input="changeMessage"
-						class="text-input r-input"
-						v-model="userInput"
-						:style="{ height: userInpuHeight ? userInpuHeight + 'px' : 'auto'}">
-					</textarea>
-					<pre class="mfakeinput text-input" :ref="setRef('fakeInput')">{{userInput}}</pre>
-					<button v-if="sending === 0" class="btn-send" :disabled="!userInput" @click="addSendMessage">
-						<svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 mr-1" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-					</button>
-					<div v-else class="btn-sending">
-						<span v-for="i in sending" :key="i">.</span>
-					</div>
-				</div>
-			</template>
-		</el-dialog>
-		<el-dialog width="800" style="max-width: 100%" v-model="trainVisible" :close-on-click-modal="false">
-			<template #header>
-				<div class="train-header">
-					<div class="title">Training Place</div>
-					Character {{ curNpc.parents ? curNpc.parents.join(' / ') : '' }} / {{curNpc.name}}
-				</div>
-			</template>
-			<div class="train-wrap">
-				<el-form label-width="130px">
-					<el-upload accept=".xls,.xlsx" v-model:file-list="trainFile" :ref="setRef('trainFile')" class="input-upload" :limit="1" :on-exceed="handleFileExceed" :auto-upload="false" :show-file-list="false">
-						<template #trigger>
-							<div class="file-select">
-								<div class="file-info">{{ trainFile[0] ? trainFile[0].name : 'Please upload the file' }}</div>
-								<el-button class="file-btn">Select</el-button>
-							</div>
-						</template>
-					</el-upload>
-					<el-form-item label="Train Type">
-						<el-radio-group v-model="trainType" class="train-radio">
-							<el-radio label="multiple">Fine-Tuning</el-radio>
-							<el-radio label="single">Prompt Database</el-radio>
-						</el-radio-group>
-					</el-form-item>
-					<el-form-item label="Update Mode">
-						<el-radio-group v-model="trainMode" class="train-radio">
-							<el-radio label="insert">Insert</el-radio>
-							<el-radio label="replace">Replace</el-radio>
-						</el-radio-group>
-					</el-form-item>
-					<div class="tip" v-if="trainMode === 'replace'">Warning: You should export the old data when you choose replace mode.</div>
-				</el-form>
-			</div>
-			<template #footer>
-				<div class="train-footer">
-					<el-button class="train-btn" @click="exportTrain">Export</el-button>
-					<el-button type="primary" class="train-btn import-btn" :loading="training" :disabled="!trainFile.length" @click="importTrain">Import</el-button>
-				</div>
-			</template>
-		</el-dialog>
-		<el-dialog width="80%" style="max-width: 100%" v-model="profileVisible" :close-on-click-modal="false" :loading="loading">
-			<template #header>
-				<div class="train-header">
-					<div class="title">Character Profile</div>
-					Character {{ curNpc.parents ? curNpc.parents.join(' / ') : '' }} / {{curNpc.name}}
-				</div>
-			</template>
-			<el-form :model="curNpc" label-width="130px">
-				<el-form-item label="Name">
-					<el-input v-model="curNpc.name" />
-				</el-form-item>
-				<el-form-item label="Derived From">
-					<el-cascader v-model="curNpc.parentIds" clearable :disabled="curNpc.id > 0" :options="npcAllGroup" style="width: 100%" :props="{value: 'id', label: 'name', checkStrictly: true}" />
-				</el-form-item>
-				<el-form-item label="Personality Data">
-					<el-input v-model="curNpc.personality_data" type="textarea" />
-				</el-form-item>
-				<el-form-item label="World Base Knowledge">
-					<el-input v-model="curNpc.world_base_knowledge" type="textarea" />
-				</el-form-item>
-				<el-form-item label="Location Knowledge">
-					<el-input v-model="curNpc.location_knowledge" type="textarea" />
-				</el-form-item>
-				<el-form-item label="Avatar">
-					<el-upload class="avatar-uploader" action="/api/common.uploadFile?site=oasisme_npc" :show-file-list="false" :on-success="handleUploadSuccess('avatar')" :on-error="handleUploadError" accept="images/*">
-						<img v-if="curNpc.avatar" :src="curNpc.avatar" class="avatar" />
-						<el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
-					</el-upload>
-				</el-form-item>
-				<el-form-item label="Poster">
-					<el-upload class="avatar-uploader" action="/api/common.uploadFile?site=oasisme_npc" :show-file-list="false" :on-success="handleUploadSuccess('poster')" :on-error="handleUploadError" accept="images/*">
-						<img v-if="curNpc.poster" :src="curNpc.poster" class="avatar" />
-						<el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
-					</el-upload>
-				</el-form-item>
-			</el-form>
-			<template #footer>
-				<div class="train-footer">
-					<el-button type="primary" @click="handleSaveProfile" :loading="profileSaving" class="train-btn">Submit</el-button>
-				</div>
-			</template>
-		</el-dialog>
+		</div>
 	</div>
 </template>
 
@@ -176,33 +58,51 @@ import { nextTick, watch, reactive, toRefs } from 'vue';
 import { ElMessageBox, ElMessage, genFileId } from 'element-plus';
 import type { UploadInstance, UploadProps, UploadRawFile, UploadUserFile } from 'element-plus'
 import { useRouter } from 'vue-router';
-import { Plus, DocumentCopy, ChatDotRound, Lock } from '@element-plus/icons-vue';
+import { Plus, DocumentCopy, ChatDotRound, Lock, Minus,EditPen,Delete,Share } from '@element-plus/icons-vue';
 import useClipboard from 'vue-clipboard3';
 import { setTitle } from '@/utils/other';
-import { Npc, npcList, npcDetail, chat, Message, FileTuneDataType, exportFineTune, importFineTune, saveNpc, deleteNpc } from '@/api';
+import { Npc, npcList, npcDetail, chat, Message, FileTuneDataType, exportFineTune, importFineTune, saveNpc, deleteNpc, Question ,questionList} from '@/api';
 import Npc1 from '@/assets/npc1.jpg';
 import Npc2 from '@/assets/npc2.jpg';
+import { Session } from '@/utils/storage';
 import DefaultAvatar from '@/assets/avatar.png';
 import FolderIcon from '@/assets/folder.png';
+import iconPng from '@/assets/icon.png';
 
 interface NpcTree extends Npc {
 	parents: string[];
 	parentIds: number[];
 	children: NpcTree[];
 }
+interface QuestionTree extends Question{
+	parents:string[];
+	parentIds:number[];
+	children:QuestionTree[]
+}
 
 export default {
 	name: 'Chat',
-	components: { Plus, DocumentCopy, ChatDotRound, Lock },
+	components: { Plus, DocumentCopy, ChatDotRound, Lock, EditPen, Delete,Share },
 	setup() {
 		const router = useRouter();
 		const state = reactive({
+			modelGrade:null,
+			questionGroupList:null,
 			npcGroups: [] as NpcTree[][],
+			questionGroups:null,
 			title: '',
+			importSuccess:false,
+			isjudging:[],
+			judgeContent:[],
+			isSelectedQuestion:false,
+			isEvaluating:false,
 			operMore: false,
 			loading: false,
 			filterNpc: -1,
 			curNpc: { avatar: '', id: 1, name: 'Perfectionist' } as NpcTree,
+			curQuestion:{},
+			curModel:{},
+			currentGroupId:null,
 			chatVisible: false,
 			userInput: '',
 			userInpuHeight: 0,
@@ -246,6 +146,62 @@ export default {
 			// })
 		}
 
+		function initQuestionList(sid:string){
+			state.loading=true;
+			state.title = sid === 'index' ? 'index' : (sid === 'history' ? 'myEvaluate' : 'questionGroup');
+			cacheSid = sid;
+			
+			// questionList().then(res => {
+
+				if(sid === 'index') {
+					state.modelGrade=[{name:"gpt3.5",dimension1:2,dimension2:4,dimension3:6,dimension4:4,dimension5:5},{name:"gpt4.0",dimension1:1,dimension2:2,dimension3:3,dimension4:4,dimension5:5}]
+					// state.questionGroups = [{id: 1, parent_id: 0, question: "test", dimension:"角色扮演",standard_answer: "testAnswer", reference_answer:{ model:"gpt3.0",answer:"SS" }},{id: 2, parent_id: 0, question: "test", standard_answer: "testAnswer", reference_answer: { model:"gpt4.0",answer:"ss" }}];
+				} else if(sid === 'history') {
+					state.modelGrade=[{name:"gpt3.5",dimension1:2,dimension2:4,dimension3:6,dimension4:4,dimension5:5},{name:"gpt4.0",dimension1:1,dimension2:2,dimension3:3,dimension4:4,dimension5:5}]
+				} else if(sid === 'group') {
+					state.questionGroupList= 
+					[[
+						{id:1,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
+						{id:2,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目", standard_answer:"" ,score:0},
+						{id:3,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
+						{id:4,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
+						{id:5,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
+						{id:6,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0}
+					]
+					,[
+						{id:1,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
+						{id:2,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目", standard_answer:"" ,score:0},
+						{id:3,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
+						{id:4,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
+						{id:5,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0}
+					]
+					,[
+						{id:1,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
+						{id:2,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目", standard_answer:"" ,score:0},
+						{id:3,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
+						{id:4,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
+						
+					]];
+					state.questionGroups=state.questionGroupList[0];
+				} 
+				
+				state.loading = false;
+			// }).catch(e => {																
+			// 	state.loading = false;
+			// 	console.error('npcList err', e);
+			// 	ElMessageBox.alert(`${e}`);
+			// })
+		}
+		function openQuestionnaire(questionGroups:Question[]){
+			state.isSelectedQuestion=true
+			state.curQuestion=questionGroups
+		}
+		function startJudge(index){
+			state.isjudging[index]=true
+		}
+		function saveJudge(index){
+			state.isjudging[index]=false
+		}
         function sendMessage(index: number) {
 			const messageLast = state.messages.length - 1;
 			sendingTimer = setInterval(() => {
@@ -256,7 +212,7 @@ export default {
 			const prompt = state.messages[messageLast - 1].content;
 			// const msgIndex = Math.floor(messageLast / 2);
 			// const startTime = Date.now();
-            return chat(state.curNpc.model_id || state.curNpc.id, prompt, `${state.curNpc.id}${sessionId}`, stopSignal).then(res => {
+            return chat(state.curNpc.model_id || state.curNpc.id, prompt, `${state.curNpc.id}${sessionId}`, stopSignal).then((res: { text: { text: any; }; }) => {
                 state.messages[index].content = res.text ? res.text.text : 'Api Error';
 				cacheMessages[state.curNpc.id] = state.messages;
 				if(index === messageLast) {
@@ -269,7 +225,7 @@ export default {
 				clearInterval(sendingTimer);
 				state.sending = 0;
                 return res;
-            }).catch(e => {
+            }).catch((e: { name: string; toString: () => any; }) => {
 				if(!(e instanceof DOMException && e.name == "AbortError")) {
 					ElMessage.error({ message: e.toString(), duration: 0, showClose: true });
 				}
@@ -278,6 +234,37 @@ export default {
 				clearInterval(sendingTimer);
 				state.sending = 0;
             });
+		}
+
+		function startEvaluation(){
+			state.isEvaluating=true;
+			router.push("/transit");
+		}
+
+		function shareTable(index:number){
+
+		}
+		function deleteTable(index:number){
+
+		}
+		function chooseGroup(groupItem:any){
+			state.questionGroups=groupItem;
+			state.currentGroupId = groupItem[0].id;
+		}
+		function importGroup(){
+			state.importSuccess=true;
+			let successBox = document.createElement('div');
+			successBox.id = 'success-box';
+			document.body.appendChild(successBox);
+			setTimeout(function() {
+				// successBox.remove();
+				state.importSuccess=false;
+			}, 3000);
+			
+		}
+
+		function deleteQuestionGroup(questionItem:any){
+			state.questionGroupList = state.questionGroupList.filter(item => item !== questionItem);
 		}
 
 		function addSendMessage() {
@@ -330,7 +317,7 @@ export default {
 			state.trainVisible = true;
 		}
 
-		const handleFileExceed: UploadProps['onExceed'] = (files) => {
+		const handleFileExceed: UploadProps['onExceed'] = (files: any[]) => {
 			refDoms.trainFile?.clearFiles()
 			const file = files[0] as UploadRawFile
 			file.uid = genFileId()
@@ -339,10 +326,10 @@ export default {
 
 		function importTrain() {
 			state.training = true;
-			importFineTune(state.curNpc.id, state.trainType, state.trainMode, state.trainFile[0].raw as File).then(res => {
+			importFineTune(state.curNpc.id, state.trainType, state.trainMode, state.trainFile[0].raw as File).then((res: any) => {
 				state.training = false;
 				ElMessage.success('Import success');
-			}).catch(e => {
+			}).catch((e: any) => {
 				state.training = false;
 				ElMessageBox.alert(`Import Failed: ${e}`);
 				console.error('importFineTune error', e);
@@ -469,8 +456,8 @@ export default {
 			}).catch(()=>{});
 		}
 
-        watch(() => router.currentRoute.value.params.sid, sid => initNpcList(sid as string), { immediate: true });
-        
+        watch(() => router.currentRoute.value.params.sid, (sid: string) => initQuestionList(sid as string), { immediate: true });
+  
 		return {
 			...toRefs(state),
 			inputMessage(e: KeyboardEvent) {
@@ -511,6 +498,15 @@ export default {
 			handleUploadSuccess,
 			handleUploadError,
 			handleDeleteNpc,
+			openQuestionnaire,
+			startEvaluation,
+			startJudge,
+			saveJudge,
+			shareTable,
+			deleteTable,
+			chooseGroup,
+			importGroup,
+			deleteQuestionGroup
 		}
 	}
 }
@@ -519,32 +515,91 @@ export default {
 
 <style scoped lang="scss">
 	.main {
-		padding: 20px 10px;
+		width: calc(100vw - 270px); /* 假设左边框的宽度为20px */
+  		height: 100vh;
+		background: #f8f8f8ff;
 	}
 	.head {
+		
 		display: flex;
-		justify-content: space-between;
-		.title {
-			color: #263131ff;
-			font-size: 24px;
-			font-weight: 600;
-			padding-left: 15px;
-		}
+		justify-content: flex-end;
+		// .title {
+		// 	color: #263131ff;
+		// 	font-size: 24px;
+		// 	font-weight: 600;
+		// 	padding-left: 15px;
+		// }
 		.create-btn {
-			padding: 8px 24px;
+			margin-top: 20px;
+			margin-right: 20px;
+			width: 112px;
 			height: 40px;
 			border-radius: 3px;
-			background: #36a6bf;
-			&:hover {
-				color: rgba(255, 255, 255, 0.9);
-				background: #2d97af;
-			}
+			opacity: 1;
+			background: #00a9ceff;
+			// padding: 8px 24px;
+			// height: 40px;
+			// border-radius: 3px;
+			// background: #36a6bf;
+			// &:hover {
+			// 	color: rgba(255, 255, 255, 0.9);
+			// 	background: #091416;
+			// }
+		}
+	}
+	.modelGradeTable{
+		justify-content: center;
+		margin-top: 30px;
+		border-collapse: collapse;
+		display:flex;
+		flex-wrap:wrap;
+		.modelNameCell{
+			border-bottom: 1px solid #e7e7e7ff;
+			border-right: 1px solid #e7e7e7ff;
+			background: #ffffffff;
+			width: 200px;
+			height: 46px;
+			opacity: 1;
+		}
+		.dimensionCell{
+			border-bottom: 1px solid #e7e7e7ff;
+			border-right: 1px solid #e7e7e7ff;
+			background: #ffffffff;
+			width: 140px;
+			height: 46px;
+			opacity: 1;
+		}
+		.judgeCell{
+			border-bottom: 1px solid #e7e7e7ff;
+			border-right: 1px solid #e7e7e7ff;
+			background: #ffffffff;
+			width: 260px;
+			height: 46px;
+			opacity: 1;
+		}
+		.operationCell{
+			border-bottom: 1px solid #e7e7e7ff;
+			border-right: 1px solid #e7e7e7ff;
+			background: #ffffffff;
+			width: 260px;
+			height: 46px;
+			opacity: 1;
+		}
+		.inputSquare{
+			width: 200px; 
+		}
+		.inputBtn{
+			width: 44px;
+			height: 24px;
+			border-radius: 3px;
+			opacity: 1;
+			background: #00a9ceff;
 		}
 	}
 	.npclist {
 		display: flex;
 		flex-wrap: wrap;
-		.npc {
+		.questionnaireSquare{
 			width: 280px;
 			height: 420px;
 			border-radius: 10px;
@@ -556,354 +611,201 @@ export default {
 			text-align: center;
 			cursor: pointer;
 			position: relative;
-			.poster {
-				width: 100%;
-				height: 370px;
-				border-radius: 8px;
-				object-fit: scale-down;
-			}
-			.name {
-				font-size: 16px;
-				font-weight: 700;
-				padding-top: 4px;
-				position: relative;
-    			z-index: 2;
-			}
-			.oper {
-				display: none;
-				width: 100%;
-				height: 100%;
-				position: absolute;
-				z-index: 1;
-				top: 0;
-				left: 0;
-				flex-direction: column;
-				justify-content: center;
-				align-items: center;
-				.oper-bg {
-					background: rgba(0, 0, 0, 0.4);
-					height: 370px;
-					border-radius: 8px;
-					position: absolute;
-					width: calc(100% - 20px);
-					top: 10px;
-				}
-				.btn {
-					width: 132px;
-					height: 40px;
-					border-radius: 3px;
-					background: #fff;
-					text-align: center;
-					opacity: 0.9;
-					color: #000;
-					font-size: 16px;
-					font-family: "PingFang SC";
-					line-height: 40px;
-					margin: 10px 0;
-					&:hover {
-						background: #d9e4e4;
-					}
-					&.danger {
-						color: #fff;
-						background: #e34d59;
-						&:hover {
-							background: #c9353f;
-						}
-					}
-				}
-			}
-			&:hover {
-				.oper {
-					display: flex;
-				}
-			}
-			.folder-wrap {
-				position: absolute;
-				width: 100%;
-				height: 100%;
-				z-index: 1;
-				top: 0;
-				left: 0;
-				display: flex;
-				justify-content: center;
-				align-items: center;
-				.folder-icon {
-					width: 50px;
-					height: 50px;
-					opacity: 0.5;
-				}
-				.folder-mask {
-					background: rgba(170, 177, 177, 0.9);
-					position: absolute;
-					width: 100%;
-					height: 370px;
-					z-index: -1;
-					top: 10px;
-					left: 0;
-					filter: blur(20px);
-				}
-			}
-			&.current {
-				background: #163039;
-				color: #ffffffff;
-			}
 		}
-	}
-	.chat-wrap {
-		min-height: 720px;
-		overflow-y: auto;
-		margin: 8px 0;
-		padding: 10px 25px;
-		background: #fff;
-		.mitem {
-			display: flex;
-			margin-bottom: 20px;
-			&.from-me {
-				justify-content: end;
-				.message {
-					background: #36a6bf;
- 					color: #ffffff;
-				}
-			}
-			.message {
-				padding: 11px 12px;
-				line-height: 1.5rem;
-				position: relative;
-				background: #f3f2f4;
-				color: rgba(0, 0, 0, 0.9);
-				font-size: 14px;
-				font-family: "PingFang SC";
-				border-radius: 8px;
-				.oper {
-					position: absolute;
-					right: 0;
-					top: -18px;
-					opacity: 0;
-					transition-duration: .5s;
-					transition-property: opacity;
-					&:hover {
-						opacity: 1;
-					}
-				}
-				&:hover {
-					.oper {
-						opacity: 1;
-					}
-				}
-				.content {
-					line-height: 2.0;
-					white-space: pre-line;
-					word-break: break-word;
-					&.inputing::after {
-						content: '|';
-						animation: 0.6s van-cursor-flicker infinite;
-					}
-				}
-			}
-		}
-	}
-	.chat-footer {
-		display: flex;
-		justify-content: space-between;
-    	align-items: flex-end;
-			.text-input {
-			background: #f2f2f2;
-			border: none;
-			font-size: 16px;
-			resize: none;
-			width: 745px;
-			padding: 8px 10px;
-			overflow: hidden;
-			border-radius: 8px;
-			min-height: 34px;
-		}
-		.r-input {
-			overflow-y: auto;
-			max-height: calc(var(--app-height) - 100px);
-		}
-		.mfakeinput {
-			position: absolute;
-			top: -100vh;
-			left: -100vw;
-			word-break: break-all;
-			white-space: pre-line;
-			padding-left: 1rem;
-		}
-		.btn-send {
-			color: #36A6BF;
-			padding: 0.25rem;
-			font-size: 20px;
-			border: none;
-			background: transparent;
-			cursor: pointer;
-			opacity: 0.8;
-			display: flex;
-			padding-bottom: 6px;
-		}
-		.btn-send:hover {
-			opacity: 1;
-		}
-		.btn-send:disabled {
-			opacity: 0.4;
-			color: rgb(142, 142, 160);
-			cursor: default;
-		}
-		.btn-sending {
-			font-size: 20px;
-			padding-bottom: 6px;
-			color: rgba(142,142,160,1);
-		}
-	}
-	.chat-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		.info {
-			display: flex;
-    		align-items: center;
-			font-family: "PingFang SC";
-			color: rgba(0, 0, 0, 0.7);
-			font-size: 14px;
-			.avatar {
-				width: 40px;
-				height: 40px;
-				border-radius: 50%;
-				margin-right: 14px;
-			}
-			.title {
-				font-weight: 600;
-				text-align: left;
-				font-size: 18px;
-				margin-right: 8px;
-			}
-		}
-	}
-	.train-wrap {
-		text-align: center;
-		padding-bottom: 120px;
-		.input-upload {
-			.file-select {
-				display: flex;
-				margin-bottom: 30px;
-			}
-			.file-info {
-				width: 505px;
-				height: 40px;
-				color: rgba(0, 0, 0, 0.3);
-				font-size: 16px;
-				line-height: 40px;
-				border-radius: 3px 0 0 3px;
-				border: 1px solid #dcdcdc;
-				text-align: left;
-				padding: 0 12px;
-				border-right: none;
-			}
-			.file-btn {
-				height: 40px;
-			}
-		}
-		.train-radio {
-			:deep(.el-radio.el-radio--small) {
-				width: 90px;
-			}
-			:deep(.el-radio.el-radio--small .el-radio__label) {
-				font-size: 14px;
-			}
-			:deep(.el-radio.el-radio--small .el-radio__inner) {
-				width: 14px;
-				height: 14px;
-			}
-		}
-		.tip {
-			color: #e34d59;
-		}
-	}
-	.train-header {
-		text-align: center;
-		color: rgba(0, 0, 0, 0.7);
-		font-size: 14px;
-		.title {
-			font-size: 18px;
-			font-weight: 700;
+		.modelSelection{
+			width: 280px;
+			height: 420px;
+			border-radius: 10px;
+			background: #140d0d;
+			color: rgb(28, 140, 140);
+			box-shadow: 0 4px 14px 0 rgba(38, 49, 49, 0.1);
+			margin: 15px;
+			padding: 10px;
 			text-align: center;
-			padding: 20px 0 10px;
-		}
-	}
-	.train-footer {
-		text-align: center;
-		.train-btn {
-			font-size: 16px;
-			font-weight: 700;
-			height: 40px;
-			line-height: 40px;
-			padding: 0 36px;
-		}
-	}
-	.micon {
-		margin-right: 8px;
-	}
-	.mbtn {
-		cursor: pointer;
-	}
-	.mbtn.liked {
-		color: #29d;
-	}
-	.avatar-uploader {
-		.avatar {
-			width: 120px;
-			height: 120px;
-			object-fit: scale-down;
-		}
-		:deep(.el-upload) {
-			border: 1px dashed var(--el-border-color);
-			border-radius: 6px;
 			cursor: pointer;
 			position: relative;
-			overflow: hidden;
-			transition: var(--el-transition-duration-fast);
 		}
-		:deep(.el-upload:hover) {
-			border-color: var(--el-color-primary);
+
+	}
+	.mask{
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background-color: rgba(255, 255, 255, 0.5);
+		z-index: 999;
+		display: none;
+		.questionnaire{
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background-color: rgba(159, 109, 109, 0.5);
+		z-index: 999;
+		display: none;
+
+	}
+	}
+.managementMain{
+	position: relative;
+	width: calc(100vw - 270px); /* 假设左边框的宽度为20px */
+	flex-grow: 1;
+	background: #f8f8f8ff;
+	
+	.import-btn{
+		width: 112px;
+		height: 40px;
+		border-radius: 3px;
+		opacity: 1;
+		background: #00a9ceff;
+		position: fixed;
+		top: 20px;
+		right: 28px;
+		z-index: 9999;
+	}
+	.indexSquare{
+		margin-top: 48px;
+		margin-left: calc(10vw - 167px);
+		position: fixed;
+		display: flex;
+		width: 140px;
+		flex-direction: column;
+		text-align: center;
+		// border-right: 1px solid #ccc;
+		.indexForGroup{
+			width: 140px;
+			margin: 6px;
+			height: 32px;
+			background: #edededff;
+			border-right: 1px solid #ccc;
+			
 		}
-		.avatar-uploader-icon {
-			font-size: 28px;
-			color: #8c939d;
-			width: 120px;
-			height: 120px;
+		.active {
+				background-color: #00A9CE;
+				color: #fff;
+			}
+	}
+
+
+	.content{
+		width: 80%;
+		position: relative;
+		justify-content: center;
+		z-index: 1;
+		background-color: #fff;
+		padding: 20px;
+		margin-left: 10%;
+		margin-top: 30px;
+		#success-box {
 			text-align: center;
-		}
-	}
-	@keyframes van-cursor-flicker {
-		from {
-			opacity: 0;
-		}
-		50% {
+			position: absolute;
+			flex-direction:row;
+			top: 10%;
+			left: 40%;
+			transform: translate(-50%, -50%);
+			padding: 13px;
+			width: 116px;
+			height: 48px;
+			border-radius: 6px;
 			opacity: 1;
+			color: #000000e6;
+			font-size: 14px;
+			font-weight: 400;
+			border: 0.5px solid #dcdcdcff;
+			background: #ffffffff;
+			box-shadow: 0 6px 30px 5px #0000000d, 0 16px 24px 2px #0000000a, 0 8px 10px -5px #00000014;
+			animation: fade-out 4s ease-out;
+			.iconPng{
+				// left: 10%;
+				// display: flex;
+				// position: relative;
+				background: url(@/assets/icon.png);
+				width: 20px;
+				height: 20px;
+				opacity: 1;
+				
+			}
 		}
-		100% {
-			opacity: 0;
+		@keyframes fade-out {
+			100% {
+					opacity: 0;
+				}
+				0% {
+					opacity: 1;
+				}
+
+			}
+		.pageName{
+			margin: 60px; 
+			text-align: center;
+			line-height: 28px;
+			letter-spacing: 0.24px;
+			font-size: 28px;
+ 			font-weight: 400;
+			// background: #00a9ceff;
 		}
+		.deleteGroup{
+			position: absolute;
+			top: 100px;
+			right:50px;
+		}
+		.questionGroupList{
+			
+			.questionName{
+				
+				margin: 8px;
+				height: 26px;
+				opacity: 1;
+				color: #000000e6;
+				font-size: 16px;
+				font-weight: 500;
+				font-family: "PingFang SC";
+				text-align: left;
+				// line-height: 26px;
+				
+			}
+			.questionDimension{
+				width: 70px;
+				height: 24px;
+				border-radius: 3px;
+				opacity: 1;
+				border: 1px solid #c6e8efff;
+				background: #e8f9fdff;
+				color: #00a9ceff;
+				font-size: 12px;
+				font-weight: 400;
+				font-family: "PingFang SC";
+				text-align: center;
+				line-height: 20px;
+			}
+			.referenceAnswer{
+				margin: 20px;
+				opacity: 1;
+				color: #000000b3;
+				font-size: 16px;
+				font-weight: 400;
+				font-family: "PingFang SC";
+				text-align: left;
+				line-height: 28px;
+			}
+		}
+
+
 	}
+	.content::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      background: #ffffffff;
+    }
+
+}
+
 </style>
 
-<style>
-	.chat-dialog {
-		max-width: 100%;
-		background: #f2f2f2;
-	}
-	.chat-dialog .el-dialog__body {
-		padding: 0;
-	}
-	.chat-dialog .el-dialog__footer {
-		padding: 10px;
-		background: #fff;
-	}
-	.chat-dialog .el-dialog__header {
-		background: #fff;
-		margin-right: 0;
-	}
-	.chat-dialog .el-dialog__headerbtn {
-		top: -10px;
-		right: -10px;
-	}
-</style>
