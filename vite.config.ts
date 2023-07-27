@@ -35,7 +35,7 @@ const viteConfig = defineConfig((mode: ConfigEnv) => {
 			},
 		},
 		build: {
-			outDir: 'oasisme_npc',
+			outDir: 'llm_evalation',
 			chunkSizeWarningLimit: 1500,
 			rollupOptions: {
 				output: {
