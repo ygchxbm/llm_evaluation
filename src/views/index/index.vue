@@ -173,9 +173,10 @@ export default {
 			isSelectedQuestion:false,
 			isEvaluating:false,
 			submitName:null as unknown as string,
-			setName:null,
+			setName:null as unknown as string,
 			curQuestion:{},
 			curModel:{},
+			loading:false,
 			curQuestionGroup:null as unknown as questionSetItem,
 			currentGroupId:null as unknown as number,
 			
@@ -216,6 +217,7 @@ export default {
 				if(sid === 'index'||sid==='history') {
 					modelList().then((data: { id: number; name: string; score: number; score_detail: string; conclusion: string; }[]) => {
 					state.modelGrade= data;
+					const dimensionNames = ['角色扮演', '其他维度', '维度3', '维度4', '维度5', '维度6', '维度7', '维度8'];
 					const scoreDetail1=[] as number[]
 					const scoreDetail2=[] as number[]
 					for (const item of data) {
@@ -231,7 +233,7 @@ export default {
 					console.log("在列出模型选择的时候出现错误"+e)
 				});
 				} else if(sid === 'group') {
-					questionSetList().then((data:{ id:number;name:string;create_user:string; create_time:string;}[])=>{
+					questionSetList().then((data:{ id:number;name:string;create_user:string; create_time:string;questions:Question[]}[])=>{
 						state.questionGroupList=data;
 						questionSetDetail(state.questionGroupList[0].id).then(res=>{
 							state.questionGroups= res

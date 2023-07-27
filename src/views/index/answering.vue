@@ -59,7 +59,7 @@ import { createDecipheriv } from 'crypto';
 	  components: {  Lock,QuestionFilled },
     setup(){
       const router = useRouter();
-      const timer = setInterval(initQuestionList, 5000);
+      // const timer = setInterval(initQuestionList, 5000);
 		  const state = reactive({
         questionGroupName:Session.get("curQuestion"),
         questionGroups:[] as Question[],
@@ -91,7 +91,9 @@ import { createDecipheriv } from 'crypto';
         }
         function regenerateAnswer(){
           console.log("it is "+state.examId+state.curQuestion.id)
-					generateAnswer(state.examId,state.curQuestion.id)
+					generateAnswer(state.examId,state.curQuestion.id).then(res=>{
+            location.reload();
+          })
         }
         function backwardQuestion(){
           state.chosenQuestionGroup[state.questionIndex].score=state.rating;
@@ -134,49 +136,52 @@ import { createDecipheriv } from 'crypto';
         }
 
         }
-        // onMounted(async()=>{
-        //   state.examId=Session.get("examId")
-        //   state.llmAnswer='模型生成答案未加载完毕，请稍后刷新重试'
-        //   let data= await examDetail(state.examId).then(
-        //     state.examItem=data
-        //     console.log(state.examItem)
-        //     state.curQuestion=state.chosenQuestionGroup[state.questionIndex];
-        //     state.curAnswer=state.examItem.my_answers[state.questionIndex];
-        //     state.llmAnswer=state.curAnswer.llm_answer
-        //     state.totalLength=state.chosenQuestionGroup.length
-        //     state.progress = ((state.questionIndex+1) / state.totalLength) * 100;
-        //     const now = new Date();
-        //     state.startTime=now.getTime();
-        //   )
- 
-     
-   
-        //   })
-        function initQuestionList(){
+        onMounted(async()=>{
           state.examId=Session.get("examId")
           state.llmAnswer='模型生成答案未加载完毕，请稍后刷新重试'
-          examDetail(state.examId).then(data=>{
-            if(data.id){
-              state.examItem=data
-              console.log(state.examItem)
-              state.curQuestion=state.chosenQuestionGroup[state.questionIndex];
-              state.curAnswer=state.examItem.my_answers[state.questionIndex];
-              state.llmAnswer=state.curAnswer.llm_answer
-              state.totalLength=state.chosenQuestionGroup.length
-              state.progress = ((state.questionIndex+1) / state.totalLength) * 100;
-              const now = new Date();
-              state.startTime=now.getTime();
-              clearInterval(timer);
-            }else{
+          let data= await examDetail(state.examId)
+          if(data.my_answers==null||data.my_answers==undefined){
+            location.reload();
+          }else{
+            state.examItem=data
+            console.log(state.examItem)
+            state.curQuestion=state.chosenQuestionGroup[state.questionIndex];
+            state.curAnswer=state.examItem.my_answers[state.questionIndex];
+            state.llmAnswer=state.curAnswer.llm_answer
+            state.totalLength=state.chosenQuestionGroup.length
+            state.progress = ((state.questionIndex+1) / state.totalLength) * 100;
+            const now = new Date();
+            state.startTime=now.getTime();
+          }
 
-            }
+            
+ 
+          })
+        // function initQuestionList(){
+        //   state.examId=Session.get("examId")
+        //   state.llmAnswer='模型生成答案未加载完毕，请稍后刷新重试'
+        //   examDetail(state.examId).then(data=>{
+        //     if(data.id){
+        //       state.examItem=data
+        //       console.log(state.examItem)
+        //       state.curQuestion=state.chosenQuestionGroup[state.questionIndex];
+        //       state.curAnswer=state.examItem.my_answers[state.questionIndex];
+        //       state.llmAnswer=state.curAnswer.llm_answer
+        //       state.totalLength=state.chosenQuestionGroup.length
+        //       state.progress = ((state.questionIndex+1) / state.totalLength) * 100;
+        //       const now = new Date();
+        //       state.startTime=now.getTime();
+        //       clearInterval(timer);
+        //     }else{
+
+        //     }
    
-          }).catch(e=>{
-				    console.log("在获得评测详情的时候出现错误"+e);
-			    });
+        //   }).catch(e=>{
+				//     console.log("在获得评测详情的时候出现错误"+e);
+			  //   });
 
-		}
-    watch(() => router.currentRoute.value.params.sid, (sid: string) => initQuestionList(), { immediate: true });
+		// }
+    // watch(() => router.currentRoute.value.params.sid, (sid: string) => initQuestionList(), { immediate: true }); 
 
 
         return{

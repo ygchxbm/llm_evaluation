@@ -61,10 +61,18 @@ export default {
 		const { toClipboard } = useClipboard();
 		let cacheSid = '';
         function backToIndex(){
+			
             router.push("/transit")
         }
 		function evaluating(){
-			router.push("/answering")
+			for(let i=0;i<state.examItem.question_count;i++){
+						generateAnswer(state.examId,state.examItem.questions[i].id).then(res=>{
+							
+								router.push("/answering")
+							
+						})
+					}	
+			
 		}
 		function initQuestionList(sid:string){
 			state.loading=true;
@@ -80,9 +88,7 @@ export default {
 					state.examItem=data
 					Session.set("chosenQuestionGroup",state.questionGroups)
 					Session.set("examId",state.examId)
-					for(let i=0;i<state.examItem.question_count;i++){
-						generateAnswer(state.examId,state.examItem.questions[i].id)
-					}	
+					
 				}).catch(e=>{
 				console.log("在获得评测详情的时候出现错误"+e);
 			});

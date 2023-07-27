@@ -3,7 +3,7 @@
 	<div v-if="isShowBreadcrumb" class="layout-navbars-breadcrumb">
 	  <el-breadcrumb separator-class="el-icon-arrow-right">
 		<el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-		<el-breadcrumb-item>{{ crumbLabel }}</el-breadcrumb-item>
+		<el-breadcrumb-item :to="{path:'/transit'}">发起评测</el-breadcrumb-item>
 	  </el-breadcrumb>
 	</div>
   </template>

@@ -281,7 +281,7 @@ export function saveNpc(npc: Npc): Promise<number> {
 }
 
 export function getSetting(): Promise<Setting> {
-    return request('/llm_evaluation.getSetting?site=llm_evaluation').then(res => res as unknown as Setting);
+    return request('/llm_evalation.getSetting?site=llm_evalation').then(res => res as unknown as Setting);
 }
 
 export function saveSetting(setting: Setting) {
