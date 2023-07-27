@@ -7,23 +7,12 @@ import request from '@/utils/request';
  */
 export interface Question{
     id:number;
+    set_id:number;
     question:string;
     dimension:string;
-    standard_answer:string;
-    reference_answers:referenceAnswerItem[];
-    // id:number;
-    // parent_id:number;
-    // question:string;
-    // referenceAnswer:string;
-    // TestModel:{
-    //     modelName:String;
-    //     modelAnswer:String;
-    // }
-    // demension:{
-    //     aspect1?:number;
-    //     aspect2?:number;
-    // }
-    // grade:number;
+    answer:string;
+    // reference_answers:referenceAnswerItem[];
+
 } 
 
 export interface referenceAnswerItem{
@@ -31,10 +20,59 @@ export interface referenceAnswerItem{
     answer:string;
     score:number;
 }
-
-export interface modelGrade{
-    
+export interface answerDetailItem{
+    dimension:string;
+    exam_id:number;
+    id:number;
+    llm_answer:string;
+    llm_gen_count:number;
+    llm_timecost:number;
+    question:string;
+    question_id:number;
+    submit_count:number;
+    submit_remark:string;
+    submit_score:number;
+    submit_time:string;
+    submit_timecost:number;
+    submit_user:string;
 }
+export interface modelGrade{
+    modelName:string;
+    averageGrade:number;
+    comment:string;
+    dimension:string;
+}
+
+export interface modelItem{
+    id:number;
+    name:string;
+    score:number;
+    score_detail:string;
+    conclusion:string;
+}
+ 
+export interface questionSetItem{
+    id:number;
+    name:string;
+    create_user:string;
+    create_time:string;
+    questions:Question[];
+}
+
+export interface examItem{
+    create_ime:string;
+    create_user:string;
+    deadline:string;
+    id:number;
+    llm_model:number;
+    my_answers:answerDetailItem[];
+    other_answers:answerDetailItem[];
+    question_count:number;
+    question_set_id:number;
+    questions:Question[];
+
+}
+
 let questionListCache: Question[]|null=null;
 let questionListLoading=false;
 let questionListTask:Function[][]=[]
@@ -63,6 +101,7 @@ export function questionList(useCache=true):Promise<Question[]>{
     });
 }
 
+
 export interface Npc {
     id: number;
     parent_id: number;
@@ -80,6 +119,7 @@ export interface Setting {
     world_base_knowledge: string;
     location_knowledge: string;
 }
+
 
 let npcListCache: Npc[] | null = null;
 let npcListLoading = false;
@@ -106,6 +146,124 @@ export function npcList(useCache = true): Promise<Npc[]> {
         return Promise.reject(e);
     });
 }
+/**
+ * * 修改模型名字或评价：POST modifyLlmModel，参数id、name、conclusion，name或conclusion不传表示不修改
+ * @param {modelName,judge}
+ * @returns {isSuccessful}
+ */
+export function modifyLlmModel(id:number,conclusion:string){
+    return request(`llm_evalation.modifyLlmModel?site=llm_evalation`, { method: 'POST', data: { id:id,conclusion:conclusion } });
+}
+/**
+ * 
+ * @param  
+ * @returns {modelName,dimensionsGrade,totalgrade,judge}
+ */
+/**模型列表：GET llmModelList
+ * 
+ * @returns {modellist[],groupList[]}
+ */
+let modelListCache: modelItem[]|null=null;
+export function modelList():Promise<modelItem[]>{
+    return request('llm_evalation.llmModelList?site=llm_evalation').then(res =>{
+        modelListCache=res as unknown as modelItem[];
+        console.log(modelListCache)
+        return modelListCache;
+    }
+    )
+}
+let questionSetListCache:questionSetItem[]|null=null;
+export function questionSetList():Promise<questionSetItem[]>{
+    return request('llm_evalation.questionSetList?site=llm_evalation').then(res=>{
+        questionSetListCache=res as unknown as questionSetItem[];
+        console.log(questionSetListCache)
+        return questionSetListCache;
+    })
+}
+
+/**
+ * @param {groupName,modelName}
+ * @returns {questionGroup[questionItem]}
+ */
+
+/**
+ * @param {questionGroup[questionItem]}
+ * @returns {isSeccessful}
+ */
+/**
+ * @param {groupName}
+ * @returns {isDeleted}
+ */
+/**
+ * @returns {groupName[],groupLists[groupList[questionItem]]}
+ */
+let questionsListCache:Question[]|null=null
+export function questionSetDetail(id:number):Promise<Question[]>{
+    return request(`llm_evalation.questionSetDetail?site=llm_evalation&id=${id}`).then(res=>{
+        questionsListCache=res.questions as unknown as Question[];
+        // console.log(questionsListCache)
+        return questionsListCache;
+    })
+}
+/**
+ * @param {groupList}
+ * @returns {isUpload}
+ */
+/**
+ * 发起评测
+ * @param {question_set_id,model_id,deadline}
+ * @return {id}
+ */
+export function createExam(questionSetId:number,modelId:number,deadline?:string): Promise<number> {
+    return request(`llm_evalation.createExam?site=llm_evalation`, { method: 'POST', data: { question_set_id:questionSetId,llm_model:modelId } }).then(res => res as unknown as number);
+}
+/**
+ * 评测详情
+ * @param{id}
+ * @return {questions,my_answers}
+ */
+let examItemCache:examItem|null=null
+//todo:在返回id正常后把id=1改成形参
+export function examDetail(id:number):Promise<examItem>{
+    return request(`llm_evalation.examDetail?site=llm_evalation&id=${id}`).then(res=>{
+        examItemCache=res as unknown as examItem;
+        console.log(res)
+        return examItemCache;
+    })
+}
+/**
+ * * 导入题库：POST importQuestions?id=xxx，同时通过附件形式上传题库，导入模板可通过导出题库获得
+ */
+export function importQuestions(id: number,file:File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request(`llm_evalation.importQuestions?id=${id}&site=llm_evalation`,{ method: 'POST' ,data:formData});
+}
+
+/**
+ * 生成答案
+ * @param {examid,question_id}
+ */
+export function generateAnswer(exam_id:number,question_id:number){
+    return request(`llm_evalation.generateAnswer?site=llm_evalation`, { method: 'POST', data: { exam_id:exam_id,question_id:question_id } })
+}
+
+/**
+ *    * 提交某道题的评分：POST submitScore，
+ * 参数exam_detail_id=评测详情id, submit_score=分数0~10, submit_remark=备注, submit_timecost=评测花费时间（前端自动计算，即这道题他打分花了多少时间，单位毫秒）
+ * @param id 
+ * @returns 
+ */
+export function submitScore(exam_detail_id:number,submit_score:number,submit_timecost:number,submit_remark?:string){
+    return request(`llm_evalation.submitScore?site=llm_evalation`, { method: 'POST', data: { exam_detail_id:exam_detail_id,submit_score:submit_score,submit_timecost:submit_timecost,submit_remark:submit_remark } })
+}
+/**
+ *导出题库：GET exportQuestions?id=xxx&_optype=export 加上_optype就是导出excel了 
+ * @returns 
+ */
+export function exportQuestions(id: number) {
+    return `/api/llm_evalation.exportQuestions?id=${id}&site=llm_evalation&_optype=export`;
+}
 
 export function npcDetail(id: number): Promise<Npc> {
     return request('/oasisme_npc.npcDetail?id='+id).then(res => res as unknown as Npc);
@@ -126,7 +284,7 @@ export function saveSetting(setting: Setting) {
 export interface Message {
     role: 'user' | 'assistant';
     content: string;
-}
+} 
 
 export interface MessageReply {
     text: { sourceType: string; text: string };
@@ -160,5 +318,3 @@ export function uploadFile(file: File) {
 export function deleteNpc(id: number): Promise<boolean> {
     return request('/oasisme_npc.deleteNpc', { method: 'POST', data: { id } }).then(res => res as unknown as boolean);
 }
-//获得题库的接口
-export function getQuestion()

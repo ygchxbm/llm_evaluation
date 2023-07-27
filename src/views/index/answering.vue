@@ -1,9 +1,11 @@
 <template>
   
     <div class="main" src="bgForAnswer">
-      <div class="askForHelp" @mouseenter="onHelpEnterLeave(true)" @mouseleave="onAsideEnterLeave(false)">
+      <!-- <div class="askForHelp" @mouseenter="onHelpEnterLeave(true)" @mouseleave="onAsideEnterLeave(false)"> -->
+      <div class="askForHelp" >
+
         <div class="dialog">
-          这里是评分标准，这里是评分标准。这里是评分标准这里是评分标准。
+          如果模型生成答案为空说明答案加载未完成，请稍后刷新重试
     </div>
       </div>  
       <div class="container">
@@ -15,9 +17,10 @@
         <div class="questionBlock">
           <div class="questionName">{{ curQuestion.id }} {{ curQuestion.question }}</div>
           <div class="questionDimension">{{ curQuestion.dimension }}</div>
-          <div class="questionReference">{{ curQuestion.standard_answer }}</div>
-          <div class="standardQuestion"> 参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。</div>
-          <div class="questionReferenceModel">这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。</div>
+
+          <div class="questionReference" >模型生成答案：{{ llmAnswer }}</div>
+          <div class="standardQuestion"> 标准答案：{{ curQuestion.answer }}</div>
+          <div class="questionReferenceModel">其他模型生成的答案：</div>
         </div>
       </div>
     </div>  
@@ -30,8 +33,11 @@
             <i class="fa fa-star"></i>
           </span> 
         </span>
+
+        <button  class="backwardQuestion" @click="regenerateAnswer()">重新生成</button>
+        <input class="submitRemark" placeholder="输入评分备注" v-model="submitRemark">
         <button v-if="progress<100" class="forwardQuestion" @click="forwardQuestion()">下一题</button>
-        <button v-else class="submitAnswer" @click="submitAnswer()">提交</button>
+        <button v-else class="submitAnswer" @click="submitAnswer()">提交</button> 
       </div>  
 </div>
   </template> 
@@ -42,9 +48,11 @@
   import { useRouter } from 'vue-router';
   import { nextTick, watch, reactive, toRefs } from 'vue';
   import { QuestionFilled } from '@element-plus/icons-vue';
-  import { Npc, npcList, npcDetail, chat, Message, FileTuneDataType, exportFineTune, importFineTune, saveNpc, deleteNpc, Question ,questionList} from '@/api';
+  import { Question ,questionList, examDetail, examItem,generateAnswer, answerDetailItem, submitScore} from '@/api';
   import { stat } from 'fs';
   import '@fortawesome/fontawesome-free/css/all.css';
+import { number } from 'echarts';
+import { dateEquals } from 'element-plus';
   export default {
     name: 'chat',
 	  components: {  Lock,QuestionFilled },
@@ -58,7 +66,14 @@
         loading: false,
         questionIndex:0,
         curQuestion:null,
+        llmAnswer:null as unknown as string,
+        submitRemark:null as unknown as string,
+        curAnswer:[] as unknown as answerDetailItem,
+        examItem:null as unknown as examItem,
+        examId:Session.get("examId"),
         curModel:Session.get("modelName"),
+        startTime:0,
+        finishTime:0,
         rating: 0,
         stars: [2, 4, 6, 8, 10],
         progress: 0,
@@ -71,6 +86,10 @@
         function backToIndex(){
           router.push("questionnaire");
         }
+        function regenerateAnswer(){
+          console.log("it is "+state.examId+state.curQuestion.id)
+					generateAnswer(state.examId,state.curQuestion.id)
+        }
         function backwardQuestion(){
           state.chosenQuestionGroup[state.questionIndex].score=state.rating;
           state.questionIndex=state.questionIndex-1;
@@ -79,22 +98,49 @@
           state.progress = ((state.questionIndex+1) / state.chosenQuestionGroup.length) * 100;
         }
         function forwardQuestion(){
-          state.chosenQuestionGroup[state.questionIndex].score=state.rating;
-          state.questionIndex=state.questionIndex+1;
-          state.rating=state.chosenQuestionGroup[state.questionIndex].score;
-          state.curQuestion=state.chosenQuestionGroup[state.questionIndex];
-          state.progress = ((state.questionIndex+1)/state.totalLength) * 100;
+          let now = new Date();
+          state.finishTime= now.getTime();
+          submitScore(state.curAnswer.id,state.rating,state.finishTime-state.startTime,state.submitRemark).then(res=>{
+            state.startTime=now.getTime();
+            state.chosenQuestionGroup[state.questionIndex].score=state.rating;
+            state.questionIndex=state.questionIndex+1;
+            state.rating=state.chosenQuestionGroup[state.questionIndex].score;
+            state.curQuestion=state.chosenQuestionGroup[state.questionIndex];
+            state.curAnswer=state.examItem.my_answers[state.questionIndex];
+            state.llmAnswer=state.curAnswer.llm_answer
+            state.progress = ((state.questionIndex+1)/state.totalLength) * 100;
+          })
+
         }
         function submitAnswer(){
-          state.chosenQuestionGroup[state.questionIndex].score=state.rating;
-          Session.set("chosenQuestionGroup",state.chosenQuestionGroup);
-          router.push("evaluatedPage")
+          let now = new Date();
+          state.finishTime= now.getTime();
+          submitScore(state.curAnswer.id,state.rating,state.finishTime-state.startTime,state.submitRemark).then(res=>{
+            state.chosenQuestionGroup[state.questionIndex].score=state.rating;
+            Session.set("chosenQuestionGroup",state.chosenQuestionGroup);
+            router.push("evaluatedPage")
+          })
+
         }
         function initQuestionList(sid:string){
-          state.curQuestion=state.chosenQuestionGroup[state.questionIndex];
-          state.totalLength=state.chosenQuestionGroup.length
-          state.progress = ((state.questionIndex+1) / state.totalLength) * 100;
-          
+          state.examId=Session.get("examId")
+          state.llmAnswer='模型生成答案未加载完毕，请稍后刷新重试'
+          examDetail(state.examId).then(data=>{
+            state.examItem=data
+            console.log(state.examItem)
+            state.curQuestion=state.chosenQuestionGroup[state.questionIndex];
+            state.curAnswer=state.examItem.my_answers[state.questionIndex];
+              console.log("changdushi "+state.curAnswer.llm_answer.length)
+              state.llmAnswer=state.curAnswer.llm_answer
+     
+            state.totalLength=state.chosenQuestionGroup.length
+            state.progress = ((state.questionIndex+1) / state.totalLength) * 100;
+            const now = new Date();
+            state.startTime=now.getTime();
+          }).catch(e=>{
+				    console.log("在获得评测详情的时候出现错误"+e);
+			    });
+
 		}
 
         watch(() => router.currentRoute.value.params.sid, (sid: string) => initQuestionList(sid as string), { immediate: true });
@@ -105,6 +151,7 @@
             backwardQuestion,
             forwardQuestion,
             submitAnswer,
+            regenerateAnswer,
             bgForAnswer,
 
         }
@@ -167,6 +214,7 @@
     }
     .content {
       position: relative;
+      min-width: 100%;
       justify-content: center;
       z-index: 1;
       background-color: #fff;
@@ -308,7 +356,10 @@
         .rating span.filled {
           color: #ff9800;
         }
-
+        .submitRemark{
+          width: 200px; 
+          margin-left: 20px;
+        }
         .forwardQuestion{
           margin-left: 30px;
           // justify-content: flex-end;

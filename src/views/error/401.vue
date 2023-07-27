@@ -33,7 +33,7 @@ export default defineComponent({
 		const router = useRouter();
 		const onSetAuth = () => {
 			Session.clear();
-			router.push('/login');
+			router.push('/');
 		};
 		// 设置主内容的高度
 		const initTagViewHeight = computed(() => {

@@ -41,8 +41,8 @@ router.beforeEach(async (to, from, next) => {
 			}
 		} catch (error) {
 			console.error(error);
-			// next('/401');
-			next();
+			next('/401');
+			// next();
 			NProgress.done();
 		}
 	}

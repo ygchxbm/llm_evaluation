@@ -5,7 +5,7 @@ export const constantRoutes: Array<RouteRecordRaw> = [
 		path: '/',
 		name: '/',
 		component: () => import('@/layout/index.vue'),
-		redirect: '/npc/all',
+		redirect: '/llm/index',
 		meta: {
 			title: '首页'
 		},
@@ -30,32 +30,31 @@ export const constantRoutes: Array<RouteRecordRaw> = [
 				},
 			},
 			{
-				path: 'questionnaire',
-				// name: 'noPower',
+				path: '/questionnaire',
+				name: 'noPower',
 				component: () => import('@/views/index/questionnaire.vue'),
-				// component: () => import('@/views/error/401.vue'),
 				meta: {
-					title: 'message.staticRoutes.noPower',
+					title: 'questionnaire',
 					isHide: true,
 				},
 			},
 			{
-				path: 'transit',
-				name: '发起评测',
+				path: '/transit',
+				name: '/transit',
 				component: () => import('@/views/index/transit.vue'),
 				meta: {
-					title: 'message.staticRoutes.noPower',
+					title: 'transit',
 					isHide: true,
 				},
 			},
 			{
-				path: 'llm/:sid?',
+				path: '/llm/:sid?',
 				name: '大语言模型评测',
 				component: () => import('@/views/index/index.vue'),
 				meta: {
 					title: '大语言模型评测',
-					// roles: ['user'],
-					// icon: 'DataBoard',
+					roles: ['user'],
+					icon: 'DataBoard',
 					isHide: true,
 				},
 			},

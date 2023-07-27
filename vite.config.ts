@@ -29,7 +29,7 @@ const viteConfig = defineConfig((mode: ConfigEnv) => {
 			hmr: true,
 			proxy: {
 				'/api': {
-					target: 'http://yuqing.oa.com',
+					target: 'http://test.skynetyu.oa.com',
 					changeOrigin: true,
 				},
 			},

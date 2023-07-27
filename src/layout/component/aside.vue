@@ -214,55 +214,55 @@ export default defineComponent({
 			});
 		});
 		
-		function loadNpcs() {
-			npcList().then((npcs) => {
-				const menus: MenuItem[] = [];
-				const hash = {};
-				npcs.forEach(x => hash[x.id] = {
-					path: `/npc/${x.id}`,
-					children: [],
-					meta: {
-						id: x.id,
-						title: x.name,
-					},
-				});
-				npcs.forEach(x => {
-					if(+x.parent_id === 0) {
-						menus.push(hash[x.id])
-					} else if(hash[x.parent_id]) {
-						hash[x.parent_id].children.push(hash[x.id]);
-					} else {
-						console.error('not found npc', x.parent_id);
-					}
-				});
-				state.menuList[1].children = menus;
-			});
-		}
+		// function loadNpcs() {
+		// 	npcList().then((npcs) => {
+		// 		const menus: MenuItem[] = [];
+		// 		const hash = {};
+		// 		npcs.forEach(x => hash[x.id] = {
+		// 			path: `/npc/${x.id}`,
+		// 			children: [],
+		// 			meta: {
+		// 				id: x.id,
+		// 				title: x.name,
+		// 			},
+		// 		});
+		// 		npcs.forEach(x => {
+		// 			if(+x.parent_id === 0) {
+		// 				menus.push(hash[x.id])
+		// 			} else if(hash[x.parent_id]) {
+		// 				hash[x.parent_id].children.push(hash[x.id]);
+		// 			} else {
+		// 				console.error('not found npc', x.parent_id);
+		// 			}
+		// 		});
+		// 		state.menuList[1].children = menus;
+		// 	});
+		// }
 
-		function loadQuestion() {
-			questionList().then((questions) => {
-				const menus: MenuItem[] = [];
-				const hash = {};
-				questions.forEach(x => hash[x.id] = {
-					path: `/npc/${x.id}`,
-					children: [],
-					meta: {
-						id: x.id,
-						title: x.name,
-					},
-				});
-				questions.forEach(x => {
-					if(+x.parent_id === 0) {
-						menus.push(hash[x.id])
-					} else if(hash[x.parent_id]) {
-						hash[x.parent_id].children.push(hash[x.id]);
-					} else {
-						console.error('not found npc', x.parent_id);
-					}
-				});
-				state.menuList[1].children = menus;
-			});
-		}
+		// function loadQuestion() {
+		// 	questionList().then((questions) => {
+		// 		const menus: MenuItem[] = [];
+		// 		const hash = {};
+		// 		questions.forEach(x => hash[x.id] = {
+		// 			path: `/npc/${x.id}`,
+		// 			children: [],
+		// 			meta: {
+		// 				id: x.id,
+		// 				title: x.name,
+		// 			},
+		// 		});
+		// 		questions.forEach(x => {
+		// 			if(+x.parent_id === 0) {
+		// 				menus.push(hash[x.id])
+		// 			} else if(hash[x.parent_id]) {
+		// 				hash[x.parent_id].children.push(hash[x.id]);
+		// 			} else {
+		// 				console.error('not found npc', x.parent_id);
+		// 			}
+		// 		});
+		// 		state.menuList[1].children = menus;
+		// 	});
+		// }
 
 		function loadSetting() {
 			getSetting().then(res => state.setting = res);
@@ -280,8 +280,8 @@ export default defineComponent({
 				console.error('saveSetting', e);
 			})
 		}
-		loadQuestion();
-		loadNpcs();
+		// loadQuestion();
+		// loadNpcs();
 		loadSetting();
 
 		return {

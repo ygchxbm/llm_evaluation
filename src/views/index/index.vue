@@ -1,13 +1,18 @@
 <template>
 	<div v-if="title==='index'||title==='myEvaluate'" class="main">
+		<div v-if="shareSuccess" id="success-box"><span class="iconPng"></span>链接已复制到剪贴板</div>
 		<div class="head">
 			<el-button type="primary" class="create-btn" @click="startEvaluation()">发起评测</el-button>
 		</div>
 			<table class="modelGradeTable">
 			<tbody >
 				<tr>
-      				<th class="modelNameCell">标题1</th>
-      				<th class="dimensionCell">标题2</th>
+      				<th class="modelNameCell">模型名称</th>
+      				<th class="dimensionCell">角色扮演</th>
+      				<th class="dimensionCell">标题3</th>
+      				<th class="dimensionCell">标题4</th>
+					<th class="dimensionCell">标题3</th>
+					<th class="dimensionCell">标题2</th>
       				<th class="dimensionCell">标题3</th>
       				<th class="dimensionCell">标题4</th>
 					<th class="dimensionCell">标题3</th>
@@ -16,41 +21,83 @@
 					<th v-else-if="title==='myEvaluate'" class="operationCell">操作</th>
     			</tr>
 				<tr v-for="(item, index) in modelGrade" :key="index">
-					<th v-for="(field, key) in item" :key="key" class="modelNameCell">
-						<span >{{ field }}</span>
-					</th>
-					<th  v-if="!isjudging[index]&&!judgeContent[index]&&title==='index'" class="judgeCell" @click="startJudge(index)"><el-icon><EditPen /></el-icon></th>
+					<th class="modelNameCell">{{ modelGrade[index].name }}</th>
+					<th class="dimensionCell">{{ scoreDetail[0][index].toFixed(2) }}</th>
+      				<th class="dimensionCell">0</th>
+      				<th class="dimensionCell">0</th>
+					<th class="dimensionCell">0</th>
+					<th class="dimensionCell">0</th>
+      				<th class="dimensionCell">0</th>
+      				<th class="dimensionCell">0</th>
+					<th class="dimensionCell">0</th>
+					<th class="dimensionCell">{{ modelGrade[index].score }}</th>
+					<th  v-if="!isjudging[index]&&!judgeContent[index]&&title==='index'&&!modelGrade[index].conclusion" class="judgeCell" @click="startJudge(index)"><el-icon><EditPen /></el-icon></th>
+					<th v-else-if="!isjudging[index]&&modelGrade[index].conclusion&&title==='index'" class="judgeCell" @click="startJudge(index)">{{ modelGrade[index].conclusion }}</th>  
 					<th v-else-if="isjudging[index]&&title==='index'"	class="judgeCell">
 						<input type="text" class="inputSquare" v-model="judgeContent[index]">
 						<el-button class="inputBtn" @click="saveJudge(index)">Save</el-button>
 					</th>  
-					<th  v-else-if="title==='myEvaluate'" class="operationCell" ><el-icon @click="shareTable(index)"><Share /></el-icon><span @click="shareTable(index)" style="margin: 0 10px;">分享</span><el-icon @click="deleteTable(index)"><Delete /></el-icon><span @click="shareTable(index)" style="margin: 0 10px;">删除</span></th>
-					<th v-else-if="isjudging[index]&&title==='index'"	class="judgeCell">
+					<th  v-else-if="title==='myEvaluate'" class="operationCell" ><el-icon @click="shareTable(index)"><Share /></el-icon><span @click="shareTable(index)" style="margin: 0 10px;">分享</span><el-icon @click="deleteTable(index)"><Delete /></el-icon><span @click="deleteTable(index)" style="margin: 0 10px;">删除</span></th>
+					<th v-else-if="isjudging[index]&&title==='index'&&!modelGrade[index].conclusion"	class="judgeCell">
 						<input type="text" class="inputSquare" v-model="judgeContent[index]">
 						<el-button class="inputBtn" @click="saveJudge(index)">Save</el-button>
 					</th>  
-					<th v-else-if="!isjudging[index]&&judgeContent[index]&&title==='index'" class="judgeCell" @click="startJudge(index)">{{ judgeContent[index] }}</th>  
+					<th v-else-if="!isjudging[index]&&judgeContent[index]&&title==='index'&&modelGrade[index].conclusion" class="judgeCell" @click="startJudge(index)">{{ modelGrade[index].conclusion }}</th>  
+					<th v-else-if="!isjudging[index]&&judgeContent[index]&&title==='index'&&!modelGrade[index].conclusion" class="judgeCell" @click="startJudge(index)">{{ judgeContent[index] }}</th>  
 				</tr>
 			</tbody>
 			</table>
 		
 	</div>
 	<div v-else class="managementMain">
-        <button class="import-btn" @click="importGroup()">导入题库</button>
+        <button class="import-btn" @click="importNow()">导入题库</button>
+		<button class="export-btn" @click="exportGroup()">导出题库</button>
 		<div class="indexSquare">
-			<span v-for="groupItem in questionGroupList" :class="{ 'active': groupItem[0].id===currentGroupId  }" class="indexForGroup" @click="chooseGroup(groupItem)">{{ groupItem[0].id }}</span>
+			<span v-for="groupItem in questionGroupList" :class="{ 'active': groupItem.id===currentGroupId  }" class="indexForGroup" @click="chooseGroup(groupItem)">{{ groupItem.id }}</span>
 		</div>
 		<div class="content">
 			<div v-if="importSuccess" id="success-box"><span class="iconPng"></span>导入成功</div>
-			<h1 class="pageName">模型 题库</h1>
+			<div v-if="importUnsuccess" id="unsuccess-box"><span class="iconPng"></span>导入失败</div>
+			<div v-if="exportUnsuccess" id="unsuccess-box"><span class="iconPng"></span>导出失败</div>
+			<div v-if="exportSuccess" id="success-box"><span class="iconPng"></span>导出成功</div>
+			<h1 class="pageName">题库名：{{ setName }}</h1>
 			<div class="deleteGroup" @click="deleteQuestionGroup(questionItem)"><el-icon><Delete /></el-icon></div>
 			<div v-for="questionItem in questionGroups" class="questionGroupList">
 				<div class="questionName">{{ questionItem.id }} {{ questionItem.question }}</div>
 				<div class="questionDimension">{{ questionItem.dimension }}</div>
-				<div class="referenceAnswer">{{ questionItem.standard_answer }}</div>
+				<div class="referenceAnswer">{{ questionItem.answer }}</div>
 			</div>
 		</div>
+		<el-dialog width="800" style="max-width: 100%" v-model="trainVisible" :close-on-click-modal="false">
+			<template #header>
+				<div class="train-header">
+					<div class="title">导入题库</div>
+				</div>
+			</template>
+			<div class="train-wrap">
+				<el-form label-width="130px">
+					<el-upload accept=".xls,.xlsx" v-model:file-list="trainFile" class="input-upload" :limit="1" :on-exceed="handleFileExceed" :auto-upload="false" :show-file-list="false">
+						<template #trigger>
+							<div class="file-select">
+								<div class="file-info">{{ trainFile[0] ? trainFile[0].name : 'Please upload the file' }}</div>
+								<el-button class="file-btn">Select</el-button>
+							</div>
+						</template>
+					</el-upload>
+					<el-form-item label="Set Selection">
+						<div class="questionSelection">题库选择<select class="optionClass" v-model="curQuestionGroup"><option v-for="questionSet in questionGroupList" :value=questionSet>{{ questionSet.name }}</option> </select></div>
+					</el-form-item>
+					<div class="tip" v-if="trainMode === 'replace'">Warning: You should export the old data when you choose replace mode.</div>
+				</el-form>
+			</div>
+			<template #footer>
+				<div class="train-footer">
+					<el-button type="primary" class="train-btn" :disabled="!trainFile.length" @click="importGroup()">Import</el-button>
+				</div>
+			</template>
+		</el-dialog>
 	</div>
+
 </template>
 
 <script lang="ts">
@@ -58,16 +105,13 @@ import { nextTick, watch, reactive, toRefs } from 'vue';
 import { ElMessageBox, ElMessage, genFileId } from 'element-plus';
 import type { UploadInstance, UploadProps, UploadRawFile, UploadUserFile } from 'element-plus'
 import { useRouter } from 'vue-router';
-import { Plus, DocumentCopy, ChatDotRound, Lock, Minus,EditPen,Delete,Share } from '@element-plus/icons-vue';
+import { Plus, DocumentCopy, ChatDotRound, Lock, EditPen,Delete,Share } from '@element-plus/icons-vue';
 import useClipboard from 'vue-clipboard3';
-import { setTitle } from '@/utils/other';
-import { Npc, npcList, npcDetail, chat, Message, FileTuneDataType, exportFineTune, importFineTune, saveNpc, deleteNpc, Question ,questionList} from '@/api';
-import Npc1 from '@/assets/npc1.jpg';
-import Npc2 from '@/assets/npc2.jpg';
-import { Session } from '@/utils/storage';
+
+import { Npc, npcList, npcDetail, chat, Message, FileTuneDataType, exportFineTune, importFineTune, saveNpc,  Question ,modelList, modelItem, modifyLlmModel,questionSetList,questionSetDetail, questionSetItem,importQuestions,exportQuestions} from '@/api';
 import DefaultAvatar from '@/assets/avatar.png';
 import FolderIcon from '@/assets/folder.png';
-import iconPng from '@/assets/icon.png';
+
 
 interface NpcTree extends Npc {
 	parents: string[];
@@ -81,46 +125,42 @@ interface QuestionTree extends Question{
 }
 
 export default {
+
 	name: 'Chat',
 	components: { Plus, DocumentCopy, ChatDotRound, Lock, EditPen, Delete,Share },
 	setup() {
+		
 		const router = useRouter();
 		const state = reactive({
-			modelGrade:null,
-			questionGroupList:null,
+			modelGrade:null as unknown as modelItem[],
+			questionGroupList:null as unknown as questionSetItem[],
 			npcGroups: [] as NpcTree[][],
-			questionGroups:null,
+			questionGroups:null as unknown as Question[],
 			title: '',
+			trainType: 'multiple' as FileTuneDataType,
 			importSuccess:false,
+			exportSuccess:false,
+			importUnsuccess:false,
+			exportUnsuccess:false,
+			shareSuccess:false,
 			isjudging:[],
+			scoreDetail:[] as number[][],
 			judgeContent:[],
+			trainFile: [] as UploadUserFile[],
+			trainVisible:false,
+			trainMode: 'insert' as 'replace' | 'insert',
 			isSelectedQuestion:false,
 			isEvaluating:false,
-			operMore: false,
-			loading: false,
-			filterNpc: -1,
-			curNpc: { avatar: '', id: 1, name: 'Perfectionist' } as NpcTree,
+			setName:null,
 			curQuestion:{},
 			curModel:{},
-			currentGroupId:null,
-			chatVisible: false,
-			userInput: '',
-			userInpuHeight: 0,
-			sending: 0,
-			messages: [] as Message[],
-			chatModel: 'default' as 'defalut' | 'gpt',
-			messageInputing: -1,
-			trainVisible: false,
-			trainType: 'multiple' as FileTuneDataType,
-			trainFile: [] as UploadUserFile[],
-			training: false,
-			trainMode: 'insert' as 'replace' | 'insert',
-			profileVisible: false,
-			profileSaving: false,
-			npcAllGroup: [] as NpcTree[],
+			curQuestionGroup:null as unknown as questionSetItem,
+			currentGroupId:null as unknown as number,
+			
 		});
+		
 		const refDoms = {
-			bottomDom: null as HTMLElement | null,
+			bottomDom: null as HTMLElement | null,	
 			fakeInput: null as HTMLElement | null,
 			trainFile: null as UploadInstance | null,
 		};
@@ -131,6 +171,7 @@ export default {
 		const npcAll: Record<number, NpcTree> = {};
 		const cacheMessages: Record<number, Message[]> = {};
 		let cacheSid = '';
+
 
 		function addDbMessage() {
 			// addMessage(nMessage).then(id => {
@@ -150,47 +191,42 @@ export default {
 			state.loading=true;
 			state.title = sid === 'index' ? 'index' : (sid === 'history' ? 'myEvaluate' : 'questionGroup');
 			cacheSid = sid;
-			
-			// questionList().then(res => {
-
-				if(sid === 'index') {
-					state.modelGrade=[{name:"gpt3.5",dimension1:2,dimension2:4,dimension3:6,dimension4:4,dimension5:5},{name:"gpt4.0",dimension1:1,dimension2:2,dimension3:3,dimension4:4,dimension5:5}]
-					// state.questionGroups = [{id: 1, parent_id: 0, question: "test", dimension:"角色扮演",standard_answer: "testAnswer", reference_answer:{ model:"gpt3.0",answer:"SS" }},{id: 2, parent_id: 0, question: "test", standard_answer: "testAnswer", reference_answer: { model:"gpt4.0",answer:"ss" }}];
-				} else if(sid === 'history') {
-					state.modelGrade=[{name:"gpt3.5",dimension1:2,dimension2:4,dimension3:6,dimension4:4,dimension5:5},{name:"gpt4.0",dimension1:1,dimension2:2,dimension3:3,dimension4:4,dimension5:5}]
+				if(sid === 'index'||sid==='history') {
+					modelList().then((data: { id: number; name: string; score: number; score_detail: string; conclusion: string; }[]) => {
+					state.modelGrade= data;
+					const scoreDetail1=[] as number[]
+					const scoreDetail2=[] as number[]
+					for (const item of data) {
+						const dump = JSON.parse(item.score_detail)
+						if (dump && dump['角色扮演']) {
+						scoreDetail1.push(dump['角色扮演'])
+						}
+						else(scoreDetail1.push(0))
+		
+     				}
+					state.scoreDetail[0]=scoreDetail1
+				}).catch(e=>{
+					console.log("在列出模型选择的时候出现错误"+e)
+				});
 				} else if(sid === 'group') {
-					state.questionGroupList= 
-					[[
-						{id:1,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
-						{id:2,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目", standard_answer:"" ,score:0},
-						{id:3,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
-						{id:4,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
-						{id:5,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
-						{id:6,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0}
-					]
-					,[
-						{id:1,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
-						{id:2,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目", standard_answer:"" ,score:0},
-						{id:3,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
-						{id:4,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
-						{id:5,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0}
-					]
-					,[
-						{id:1,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
-						{id:2,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目", standard_answer:"" ,score:0},
-						{id:3,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
-						{id:4,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},
+					questionSetList().then((data:{ id:number;name:string;create_user:string; create_time:string;}[])=>{
+						state.questionGroupList=data;
+						questionSetDetail(state.questionGroupList[0].id).then(res=>{
+							state.questionGroups= res
+							console.log(state.questionGroupList)
+						state.currentGroupId=state.questionGroupList[0].id
+						state.setName=state.questionGroupList[0].name;
+						console.log("这是第几个题库" + state.questionGroupList[0].id)
+						});
 						
-					]];
-					state.questionGroups=state.questionGroupList[0];
+					}).catch(e=>{
+						console.log("在列出题库选择的时候出现错误"+e);
+					}); 
+
 				} 
 				
 				state.loading = false;
-			// }).catch(e => {																
-			// 	state.loading = false;
-			// 	console.error('npcList err', e);
-			// 	ElMessageBox.alert(`${e}`);
-			// })
+
 		}
 		function openQuestionnaire(questionGroups:Question[]){
 			state.isSelectedQuestion=true
@@ -199,9 +235,15 @@ export default {
 		function startJudge(index){
 			state.isjudging[index]=true
 		}
-		function saveJudge(index){
+		function saveJudge(index:number){
+			modifyLlmModel(state.modelGrade[index].id,state.judgeContent[index])
 			state.isjudging[index]=false
 		}
+		function importNow(){
+			state.trainVisible=true
+		}
+		
+
         function sendMessage(index: number) {
 			const messageLast = state.messages.length - 1;
 			sendingTimer = setInterval(() => {
@@ -238,33 +280,85 @@ export default {
 
 		function startEvaluation(){
 			state.isEvaluating=true;
-			router.push("/transit");
+			router.push('/transit');
 		}
 
 		function shareTable(index:number){
-
-		}
-		function deleteTable(index:number){
-
-		}
-		function chooseGroup(groupItem:any){
-			state.questionGroups=groupItem;
-			state.currentGroupId = groupItem[0].id;
-		}
-		function importGroup(){
-			state.importSuccess=true;
+		const currentUrl = window.location.href;
+        navigator.clipboard.writeText(currentUrl)
+          .then(() => {
+			state.shareSuccess=true;
 			let successBox = document.createElement('div');
 			successBox.id = 'success-box';
 			document.body.appendChild(successBox);
 			setTimeout(function() {
 				// successBox.remove();
-				state.importSuccess=false;
+				state.shareSuccess=false;
+			}, 3000);
+            console.log('链接已复制到剪贴板');
+          })
+          .catch((error) => {
+            console.log('复制链接失败:', error);
+          });
+      
+		}
+
+		function deleteTable(index:number){
+			// let index=state.questionGroupList.findIndex((group) => group === questionItem);
+			state.modelGrade.splice(index,1)
+		}
+		async function chooseGroup(groupItem:any){
+			state.currentGroupId = groupItem.id;
+			state.setName=groupItem.name;
+			state.questionGroups=await questionSetDetail(state.currentGroupId);
+
+		}
+		function importGroup(){
+			if(state.curQuestionGroup){
+				importQuestions(state.curQuestionGroup.id,state.trainFile[0].raw as File).then(res=>{
+					state.importSuccess=true;
+					let successBox = document.createElement('div');
+					successBox.id = 'success-box';
+					document.body.appendChild(successBox);
+					setTimeout(function() {
+						// successBox.remove();
+						state.importSuccess=false;
+					}, 3000);
+				}).catch(e=>{
+					state.importUnsuccess=true;
+					let successBox = document.createElement('div');
+					successBox.id = 'unsuccess-box';
+					document.body.appendChild(successBox);
+					setTimeout(function() {
+						// successBox.remove();
+						state.importUnsuccess=false;
+					}, 3000);
+				})
+			}else{
+				alert("请选择你要导入的题库")
+			}
+			
+
+			
+		}
+		function exportGroup(){
+			location.href = exportQuestions(state.currentGroupId)
+			state.exportSuccess=true;
+			let successBox = document.createElement('div');
+			successBox.id = 'success-box';
+			document.body.appendChild(successBox);
+			setTimeout(function() {
+				// successBox.remove();
+				state.exportSuccess=false;
 			}, 3000);
 			
+
 		}
 
 		function deleteQuestionGroup(questionItem:any){
-			state.questionGroupList = state.questionGroupList.filter(item => item !== questionItem);
+			// state.questionGroupList = state.questionGroupList.filter(item => item !== questionItem);
+			let index=state.questionGroupList.findIndex((group) => group === questionItem);
+			state.questionGroupList.splice(index,1)
 		}
 
 		function addSendMessage() {
@@ -313,7 +407,7 @@ export default {
 		}
 
 		function trainNow(id: number) {
-			state.curNpc = npcAll[id];
+			// state.curNpc = npcAll[id];
 			state.trainVisible = true;
 		}
 
@@ -376,62 +470,7 @@ export default {
 			})
 		}
 
-		function initNpcList(sid: string) {
-			state.loading = true;
-			state.title = sid === 'all' ? 'Show All' : 'Character Tree';
-			cacheSid = sid;
-			Object.keys(npcAll).forEach(k=>delete(npcAll[k]));
-			npcList().then(res => {
-				const tree: NpcTree[] = [];
-				res.forEach(x => npcAll[x.id] = { ...x, parents: [], parentIds: [], children: [], poster: x.poster || (Math.random() > 0.5 ? Npc1 : Npc2) });
-				res.forEach(x => {
-					if(+x.parent_id === 0) {
-						tree.push(npcAll[x.id]);
-					} else if(npcAll[x.parent_id]) {
-						npcAll[x.parent_id].children.push(npcAll[x.id]);
-						npcAll[x.id].parents.push(npcAll[x.parent_id].name);
-						npcAll[x.id].parentIds.push(x.parent_id);
-					} else {
-						console.error('not found npc', x.parent_id);
-					}
-				});
-				const recSetParents = function(item: NpcTree, mkey: 'parents' | 'parentIds', curr: (string | number)[]) {
-					if(item.parent_id > 0 && npcAll[item.parent_id]) {
-						return (npcAll[item.parent_id][mkey] as (string | number)[]).concat(curr);
-					}
-					return curr;
-				};
-				Object.values(npcAll).forEach(item => {
-					item.parents = recSetParents(item, 'parents', item.parents) as string[];
-					item.parentIds = recSetParents(item, 'parentIds', item.parentIds) as number[];
-				});
-				if(sid === 'all') {
-					state.npcGroups = [[], Object.values(npcAll)];
-					setTitle(state.title);
-				} else if(sid === 'tree') {
-					state.npcGroups = [[], tree];
-					setTitle(state.title);
-				} else {
-					state.npcGroups = [[npcAll[sid]], npcAll[sid].children];
-					state.title = `${npcAll[sid].parents ? npcAll[sid].parents.join(' / ') : '' } / ${npcAll[sid].name}`;
-					setTitle(npcAll[sid].name);
-				}
-				state.npcAllGroup = tree;
-				state.loading = false;
-			}).catch(e => {
-				state.loading = false;
-				console.error('npcList err', e);
-				ElMessageBox.alert(`${e}`);
-			})
-		}
-
-		function goNpc(id: number, groupIndex: number) {
-			const npc = npcAll[id];
-			if(groupIndex > 0 && npc.children.length > 0) {
-				router.push(`/npc/${id}`);
-			}
-		}
-
+		
 		function handleUploadSuccess(field: 'avatar' | 'poster') {
 			return (url: string) => state.curNpc[field] = url
 		}
@@ -439,27 +478,14 @@ export default {
 		function handleUploadError(e: Error) {
 			ElMessage.error(`${e}`);
 		}
-
-		function handleDeleteNpc(id: number) {
-			ElMessageBox.confirm('Sure to Delete?').then(() => {
-				deleteNpc(id).then(() => {
-					ElMessage.success('Delete Success');
-					if(state.npcGroups[0][0] && state.npcGroups[0][0].id === id) {
-						router.replace('/npc/all');
-					} else {
-						window.location.reload();
-					}
-				}).catch(e => {
-					ElMessageBox.alert(`${e}`);
-					console.error('saveNpc', e);
-				})
-			}).catch(()=>{});
-		}
+		
 
         watch(() => router.currentRoute.value.params.sid, (sid: string) => initQuestionList(sid as string), { immediate: true });
   
 		return {
+			
 			...toRefs(state),
+	
 			inputMessage(e: KeyboardEvent) {
 				if(!e.shiftKey && e.key === 'Enter') {
 					e.preventDefault();
@@ -489,15 +515,15 @@ export default {
 			chatNow,
 			trainNow,
 			handleFileExceed,
-			exportTrain,
+			exportTrain,	
 			importTrain,
 			goProfile,
 			handleSaveProfile,
 			FolderIcon,
-			goNpc,
+		
 			handleUploadSuccess,
 			handleUploadError,
-			handleDeleteNpc,
+
 			openQuestionnaire,
 			startEvaluation,
 			startJudge,
@@ -506,9 +532,17 @@ export default {
 			deleteTable,
 			chooseGroup,
 			importGroup,
-			deleteQuestionGroup
+			exportGroup,
+			deleteQuestionGroup,
+			importNow,
+			filters: {
+				formatPrice(value:any) {
+				return value.toFixed(2)
+				}
+			},
 		}
 	}
+	
 }
 
 </script>
@@ -518,6 +552,75 @@ export default {
 		width: calc(100vw - 270px); /* 假设左边框的宽度为20px */
   		height: 100vh;
 		background: #f8f8f8ff;
+		#success-box {
+			text-align: center;
+			position: absolute;
+			flex-direction:row;
+			top: 10%;
+			left: 40%;
+			transform: translate(-50%, -50%);
+			padding: 13px;
+			width: 200px;
+			height: 48px;
+			border-radius: 6px;
+			opacity: 1;
+			color: #000000e6;
+			font-size: 14px;
+			font-weight: 400;
+			border: 0.5px solid #dcdcdcff;
+			background: #ffffffff;
+			box-shadow: 0 6px 30px 5px #0000000d, 0 16px 24px 2px #0000000a, 0 8px 10px -5px #00000014;
+			animation: fade-out 4s ease-out;
+			.iconPng{
+				// left: 10%;
+				// display: flex;
+				// position: relative;
+				background: url(@/assets/icon.png);
+				width: 20px;
+				height: 20px;
+				opacity: 1;
+				
+			}
+		}
+		#unsuccess-box {
+			text-align: center;
+			position: absolute;
+			flex-direction:row;
+			top: 10%;
+			right:40%;
+			transform: translate(-50%, -50%);
+			padding: 13px;
+			width: 200px;
+			height: 48px;
+			border-radius: 6px;
+			opacity: 1;
+			color: #000000e6;
+			font-size: 14px;
+			font-weight: 400;
+			border: 0.5px solid #dcdcdcff;
+			background: #ffffffff;
+			box-shadow: 0 6px 30px 5px #0000000d, 0 16px 24px 2px #0000000a, 0 8px 10px -5px #00000014;
+			animation: fade-out 4s ease-out;
+			.iconPng{
+				// left: 10%;
+				// display: flex;
+				// position: relative;
+				background: url(@/assets/icon.png);
+				width: 20px;
+				height: 20px;
+				opacity: 1;
+				
+			}
+		}
+		@keyframes fade-out {
+			100% {
+					opacity: 0;
+				}
+				0% {
+					opacity: 1;
+				}
+
+			}
 	}
 	.head {
 		
@@ -651,6 +754,7 @@ export default {
 .managementMain{
 	position: relative;
 	width: calc(100vw - 270px); /* 假设左边框的宽度为20px */
+	min-height: 100vh;
 	flex-grow: 1;
 	background: #f8f8f8ff;
 	
@@ -661,7 +765,18 @@ export default {
 		opacity: 1;
 		background: #00a9ceff;
 		position: fixed;
-		top: 20px;
+		top: 30px;
+		right: 28px;
+		z-index: 9999;
+	}
+	.export-btn{
+		width: 112px;
+		height: 40px;
+		border-radius: 3px;
+		opacity: 1;
+		background: #00a9ceff;
+		position: fixed;
+		top: 90px;
 		right: 28px;
 		z-index: 9999;
 	}
@@ -697,7 +812,9 @@ export default {
 		background-color: #fff;
 		padding: 20px;
 		margin-left: 10%;
-		margin-top: 30px;
+		
+		// margin-top: 30px;
+		top:30px;
 		#success-box {
 			text-align: center;
 			position: absolute;
@@ -804,8 +921,79 @@ export default {
       z-index: -1;
       background: #ffffffff;
     }
+	
+		.train-wrap {
+		text-align: center;
+		padding-bottom: 120px;
+		.input-upload {
+			.file-select {
+				display: flex;
+				margin-bottom: 30px;
+			}
+			.file-info {
+				width: 505px;
+				height: 40px;
+				color: rgba(0, 0, 0, 0.3);
+				font-size: 16px;
+				line-height: 40px;
+				border-radius: 3px 0 0 3px;
+				border: 1px solid #dcdcdc;
+				text-align: left;
+				padding: 0 12px;
+				border-right: none;
+			}
+			.file-btn {
+				height: 40px;
+			}
+		}
+		.questionSelection{
+			margin: 24px;
+			border-radius: 3px;
+			opacity: 1;
+			text-align: center;
+			color: #00000080;
+			font-size: 14px;
+			font-weight: 400;
+			font-family: "PingFang SC";
+			line-height: 22px;
+			.optionClass{
+				width: 330px;
+				height: 32px;
+				border-radius: 3px;
+				opacity: 1;
+				color: #00000066;
+			}
+	}
+		.tip {
+			color: #e34d59;
+		}
+	}		
 
+	.train-header {
+		text-align: center;
+		color: rgba(0, 0, 0, 0.7);
+		font-size: 14px;
+		.title {
+			font-size: 18px;
+			font-weight: 700;
+			text-align: center;
+			padding: 20px 0 10px;
+		}
+	}
+	.train-footer {
+		text-align: center;
+		.train-btn {
+			font-size: 16px;
+			font-weight: 700;
+			height: 40px;
+			line-height: 40px;
+			padding: 0 36px;
+		}
+	}
 }
+	
+
+
 
 </style>
 

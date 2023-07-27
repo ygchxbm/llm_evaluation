@@ -10,7 +10,7 @@
 			<div v-for="questionItem in questionGroups" class="questionGroupList">
 				<div class="questionName">{{ questionItem.id }} {{ questionItem.question }}</div>
 				<div class="questionDimension">{{ questionItem.dimension }}</div>
-				<div class="referenceAnswer">{{ questionItem.standard_answer }}</div>
+				<div class="referenceAnswer">{{ questionItem.answer }}</div>
 			</div>
 		</div>
 	<button class="backToIndex" @click="backToIndex()">上一步</button>
@@ -28,8 +28,9 @@ import { Plus, DocumentCopy, ChatDotRound, Lock } from '@element-plus/icons-vue'
 import useClipboard from 'vue-clipboard3';
 import { setTitle } from '@/utils/other';
 import { Session } from '@/utils/storage';
-import { Npc, npcList, npcDetail, chat, Message, FileTuneDataType, exportFineTune, importFineTune, saveNpc, deleteNpc, Question ,questionList} from '@/api';
+import { questionSetDetail, Question ,questionList,createExam,examDetail,examItem,generateAnswer} from '@/api';
 import Breadcrumb from '@/layout/component/breadcrumb.vue';
+import { stat } from 'fs';
 
 export default {
 	name: 'chat',
@@ -42,8 +43,12 @@ export default {
 			loading: false,
 			curQuestion:null,
 			curModel:null,
+			examId:null as unknown as number,
+			examItem:null as unknown as examItem,
             questionGroup:Session.get("curQuestion"),
             evaluatingModel:Session.get("modelName"),
+			modelId:Session.get("modelId"),
+			questionSetId:Session.get("questionnaireId")
 		});
 		const refDoms = {
 			bottomDom: null as HTMLElement | null,
@@ -59,37 +64,42 @@ export default {
             router.push("/transit")
         }
 		function evaluating(){
-			router.push("/answering")
+			createExam(state.questionSetId,state.modelId).then(data=>{
+				state.examId =data
+				console.log("exam id is " + state.examId)
+				examDetail(state.examId).then(data=> {
+					state.examItem=data
+					Session.set("chosenQuestionGroup",state.questionGroups)
+					Session.set("examId",state.examId)
+					for(let i=0;i<state.examItem.question_count;i++){
+						generateAnswer(state.examId,state.examItem.questions[i].id)
+					}	
+					router.push("/answering")
+				}).catch(e=>{
+				console.log("在获得评测详情的时候出现错误"+e);
+			});
+
+			}).catch(e=>{
+				console.log("在发起评测的时候出现错误"+e);
+
+			})
+		
 		}
 		function initQuestionList(sid:string){
 			state.loading=true;
 			state.title = '发起评测';
 			cacheSid = sid;
-			
-			// questionList().then(res => {
+			questionSetDetail(state.questionSetId).then((data:{ id:number;set_id:number;question:string;dimension:string;answer:string;}[])=>{
+				console.log(data)
+				state.questionGroups=data;
 
-				// if(sid === 'all') {
-					state.questionGroups= [{id:1,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱吱" ,score:0}
-					,{id:2,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目", standard_answer:"" ,score:0},{id:3,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},{id:4,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},{id:5,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},{id:6,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},{id:7,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0},{id:8,dimension:"play",question:"这里是题目这里是题目这里是题目这里是题目这里是题目",standard_answer:"参考答案：这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。这里是模型生成的答案，这里是模型生成的答案。" ,score:0}];
-					Session.set("chosenQuestionGroup",state.questionGroups)
-					setTitle(state.title);
-				// } else if(sid === 'tree') {
-					
-				// 	setTitle(state.title);
-				// } 
-				
-				state.loading = false;
-			// }).catch(e => {
-			// 	state.loading = false;
-			// 	console.error('npcList err', e);
-			// 	ElMessageBox.alert(`${e}`);
-			// })
+			}).catch(e=>{
+				console.log("在请求题库具体题目时出现错误"+e);
+			});
+			// console.log(state.questionGroups)
+			setTitle(state.title);
+			state.loading = false;
 		}
-        // function findModelAnswer(){
-        //     for(const questionItem of questionGroup){
-                
-        //     }
-        // }
 		watch(() => router.currentRoute.value.params.sid, (sid: string) => initQuestionList(sid as string), { immediate: true });
         return{
             ...toRefs(state),
@@ -107,6 +117,7 @@ export default {
 	.main {
 		position: relative;
 		width: calc(100vw - 270px); /* 假设左边框的宽度为20px */
+		min-height: 100vh;
 		flex-grow: 1;
 		background: #f8f8f8ff;
 	.head {

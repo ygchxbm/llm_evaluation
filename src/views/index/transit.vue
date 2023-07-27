@@ -8,12 +8,10 @@
 		<div class="background" ></div>
 		<div class="content">
 			<h1 class="pageName">发起测评</h1>
-			<div class="modelSelection">模型选择      <select class="optionClass"><option v-for="model in allModel" :value=curModel >{{ curModel=model }}</option> </select> </div>
-			<div class="questionSelection">题库选择       <select class="optionClass"><option v-for="question in allQuestionGroups" :value=curQuestionGroup >{{ curQuestionGroup=question }}</option> </select></div>
+			<div class="modelSelection">模型选择      <select class="optionClass" v-model="curModel"><option value="" disabled selected hidden>请选择</option><option v-for="model in allModel" :value=model >{{ model.name }}</option> </select> </div>
+			<div class="questionSelection">题库选择       <select class="optionClass" v-model="curQuestionGroup"><option value="" disabled selected hidden>请选择</option><option v-for="question in allQuestionGroups" :value=question>{{ question.name }}</option> </select></div>
 			<button class="evaluationStart" @click="startEvaluation()">下一步</button>
 		</div>
-			
-		
 	</div>
 </template>
 
@@ -28,7 +26,7 @@ import useClipboard from 'vue-clipboard3';
 import { setTitle } from '@/utils/other';
 import { Session } from '@/utils/storage';
 import Breadcrumb from '@/layout/component/breadcrumb.vue';
-import { Npc, npcList, npcDetail, chat, Message, FileTuneDataType, exportFineTune, importFineTune, saveNpc, deleteNpc, Question ,questionList} from '@/api';
+import { Message, Question ,questionSetList, questionSetItem,modelList,modelItem} from '@/api';
 
 
 export default {
@@ -41,12 +39,13 @@ export default {
 			questionGroups:[] as Question[][],
 			title: '',
 			loading: false,
-			allQuestionGroups:[] as string[],
-			allModel:[] as string[],
-			curModel:null,
-			curQuestionGroup:null,
-            questionGroup:Session.get("curQuestion"),
-            evaluatingModel:Session.get("modelName"),
+			allQuestionGroups:[] as unknown as questionSetItem[],
+			allModel:[] as modelItem[],
+			curModel:null as unknown as modelItem,
+			curQuestionGroup:null as unknown as questionSetItem,
+
+            // questionGroup:Session.get("curQuestion"),
+            // evaluatingModel:Session.get("modelName"),
 		});
 		const refDoms = {
 			bottomDom: null as HTMLElement | null,
@@ -71,8 +70,10 @@ export default {
         function startEvaluation(){
        
             if(state.curModel&&state.curQuestionGroup){
-                Session.set("curQuestion",state.curQuestionGroup)
-                Session.set("modelName",state.curModel)
+                Session.set("curQuestion",state.curQuestionGroup.name)
+				Session.set("questionnaireId",state.curQuestionGroup.id)
+				Session.set("modelName",state.curModel.name)
+				Session.set("modelId",state.curModel.id)
                 router.push("/questionnaire")
             }else{
                 alert("请选择模型和题库");
@@ -81,14 +82,28 @@ export default {
         }
         function initQuestionList(sid:string){
 			state.loading=true;
+			// state.curModel=null;
+			// state.curQuestionGroup=null;
 			state.title =  "发起评测" ;
 			cacheSid = sid;
+			modelList().then((data: { id: number; name: string; score: number; score_detail: string; conclusion: string; }[]) => {
+				state.allModel= data;
+			}).catch(e=>{
+				console.log("在列出模型选择的时候出现错误"+e)
+			});
+			questionSetList().then((data:{ id:number;name:string;create_user:string; create_time:string;}[])=>{
+				state.allQuestionGroups=data;
+			}).catch(e=>{
+				console.log("在列出题库选择的时候出现错误"+e);
+			}); 
 			
 			// questionList().then(res => {
 
 				// if(sid === 'all') {
-					state.allModel= ["请选择","gpt3.0", "gpt4.0"];
-					state.allQuestionGroups = ["请选择","group1","group2"];
+					// state.allModel= ["gpt3.0", "gpt4.0"];
+					// state.allQuestionGroups = ["group1","group2"];
+					// state.curModel="请选择";
+					// state.curQuestionGroup="请选择"
 					setTitle(state.title);
 				// } else if(sid === 'tree') {
 					

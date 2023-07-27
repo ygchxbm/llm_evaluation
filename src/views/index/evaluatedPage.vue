@@ -1,16 +1,18 @@
 <template>
   <div class="main" src="bgForAnswer">
+    <button class="backToIndex" @click="backToIndex">返回首页</button>
     <div class="container">
       <div class="content">
         <div class="thanks"></div>
         <h1 style="margin: 80px;">测评到此结束，感谢您的参与</h1>
-        <div class="result">总评分：{{ averageScore }} 
+        <div class="result">总评分：{{ averageScore.toFixed(2) }} 
           <span class="rating">     
             <span v-for="star in stars" :class="{ 'filled': star <= averageScore }" >
                 <i class="fa fa-star"></i>
             </span>  
           </span>       
         </div>
+        
       </div>
     </div>     
   </div>
@@ -21,11 +23,13 @@
   import { Session } from '@/utils/storage';
   import { useRouter } from 'vue-router';
   import { nextTick, watch, reactive, toRefs } from 'vue';
-  import { CircleCheck  } from '@element-plus/icons-vue';
-  import { Npc, npcList, npcDetail, chat, Message, FileTuneDataType, exportFineTune, importFineTune, saveNpc, deleteNpc, Question ,questionList} from '@/api';
+  import { CircleCheck, Filter  } from '@element-plus/icons-vue';
+  import { Question , examDetail} from '@/api';
+  import { Filter } from 'element-plus';
   import '@fortawesome/fontawesome-free/css/all.css';
+  
   export default {
-    components: { CircleCheck },
+    components: { CircleCheck},
     setup() {
         const router = useRouter();
         const state = reactive({
@@ -42,14 +46,23 @@
             averageScore:0,
             chosenQuestionGroup: Session.get("chosenQuestionGroup")
         });
-      
+      function backToIndex(){
+        router.push("/llm/index")
+      }
         function initResult(sid: string) {
             state.totalScore = state.chosenQuestionGroup.reduce((acc:any, item:any) => acc + item.score, 0);
             state.averageScore=state.totalScore/state.chosenQuestionGroup.length;
-        }
+            examDetail(Session.get("examId")).then(res=>{
+              console.log(res)
+            })
+
+            }
+
         watch(() => router.currentRoute.value.params.sid, (sid: string) => initResult(sid as string), { immediate: true });
         return {
             ...toRefs(state),
+            backToIndex,
+            
         };
     },
   
@@ -64,6 +77,17 @@
     height: 100vh;
     background: url(@/assets/bgForAnswer.png);
     background-size: cover;
+    .backToIndex{
+      position: fixed;
+      top: 20px;
+      right:30px;
+      width: 112px;
+      height: 40px;
+      border-radius: 3px;
+      opacity: 1;
+      border: 1px solid #dcdcdcff;
+      background: #ffffffff;
+    }
     .container {
       position: relative;
       top: 46%;
@@ -79,6 +103,7 @@
       // border-radius: 50px;
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
       background: #ffffffff;
+
     }
     .content {
       padding: 10%  ;
@@ -93,6 +118,7 @@
       width: 100%; /* 设置div元素的宽度 */
       height: 100%; /* 设置div元素的高度 */
       margin-top: 60px; 
+     
       .thanks{  
         // position:absolute;
         margin: 14px;
@@ -125,6 +151,7 @@
         color: #ff9800;
       }
     }
+
     }
 
 
