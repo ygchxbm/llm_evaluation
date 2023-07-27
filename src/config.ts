@@ -1,1 +1,1 @@
-export const site = 'llm_evaluation';
+export const site = 'llm_evalation';
