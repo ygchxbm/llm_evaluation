@@ -13,9 +13,9 @@
         <div class="progress-bar">
           <div class="progress" :style="{ width: progress + '%' }"></div>
         </div>
-        <div class="questionGroupName">{{ questionGroupName }}</div>
+        <div class="questionGroupName">题库名：{{ questionGroupName }} 模型名：{{ curModel }}</div>
         <div class="questionBlock">
-          <div class="questionName">{{ curQuestion.id }} {{ curQuestion.question }}</div>
+          <div class="questionName">{{ curQuestion.id ??loading}} {{ curQuestion.question }}</div>
           <div class="questionDimension">{{ curQuestion.dimension }}</div>
 
           <div class="questionReference" >模型生成答案：{{ llmAnswer }}</div>
@@ -46,26 +46,28 @@
   import bgForAnswer from '@/assets/bgForAnswer.png'
   import { Session } from '@/utils/storage';
   import { useRouter } from 'vue-router';
-  import { nextTick, watch, reactive, toRefs } from 'vue';
+  import { nextTick, watch, reactive, toRefs, onMounted,watchEffect } from 'vue';
   import { QuestionFilled } from '@element-plus/icons-vue';
   import { Question ,questionList, examDetail, examItem,generateAnswer, answerDetailItem, submitScore} from '@/api';
   import { stat } from 'fs';
   import '@fortawesome/fontawesome-free/css/all.css';
 import { number } from 'echarts';
 import { dateEquals } from 'element-plus';
+import { createDecipheriv } from 'crypto';
   export default {
     name: 'chat',
 	  components: {  Lock,QuestionFilled },
     setup(){
       const router = useRouter();
+      const timer = setInterval(initQuestionList, 5000);
 		  const state = reactive({
-        questionGroupName:"题库名",
+        questionGroupName:Session.get("curQuestion"),
         questionGroups:[] as Question[],
         title: '',
         totalLength:0,
         loading: false,
         questionIndex:0,
-        curQuestion:null,
+        curQuestion:[] as unknown as Question,
         llmAnswer:null as unknown as string,
         submitRemark:null as unknown as string,
         curAnswer:[] as unknown as answerDetailItem,
@@ -80,6 +82,7 @@ import { dateEquals } from 'element-plus';
         chosenQuestionGroup:Session.get("chosenQuestionGroup")
 
 		});
+
         function setRating(star:number) {
           state.rating = star;
         }
@@ -98,9 +101,13 @@ import { dateEquals } from 'element-plus';
           state.progress = ((state.questionIndex+1) / state.chosenQuestionGroup.length) * 100;
         }
         function forwardQuestion(){
-          let now = new Date();
-          state.finishTime= now.getTime();
-          submitScore(state.curAnswer.id,state.rating,state.finishTime-state.startTime,state.submitRemark).then(res=>{
+          if(state.rating===0||state.rating==null){
+            alert("请选择分数")
+          }else{
+            let now = new Date();
+            state.finishTime= now.getTime();
+            state.curAnswer=state.examItem.my_answers[state.questionIndex];
+            submitScore(state.curAnswer.id,state.rating,state.finishTime-state.startTime,state.submitRemark).then(res=>{
             state.startTime=now.getTime();
             state.chosenQuestionGroup[state.questionIndex].score=state.rating;
             state.questionIndex=state.questionIndex+1;
@@ -110,9 +117,13 @@ import { dateEquals } from 'element-plus';
             state.llmAnswer=state.curAnswer.llm_answer
             state.progress = ((state.questionIndex+1)/state.totalLength) * 100;
           })
-
+          }
+       
         }
         function submitAnswer(){
+          if(state.rating===0||state.rating==null){
+            alert("请选择分数")
+          }else{
           let now = new Date();
           state.finishTime= now.getTime();
           submitScore(state.curAnswer.id,state.rating,state.finishTime-state.startTime,state.submitRemark).then(res=>{
@@ -120,30 +131,54 @@ import { dateEquals } from 'element-plus';
             Session.set("chosenQuestionGroup",state.chosenQuestionGroup);
             router.push("evaluatedPage")
           })
+        }
 
         }
-        function initQuestionList(sid:string){
+        // onMounted(async()=>{
+        //   state.examId=Session.get("examId")
+        //   state.llmAnswer='模型生成答案未加载完毕，请稍后刷新重试'
+        //   let data= await examDetail(state.examId).then(
+        //     state.examItem=data
+        //     console.log(state.examItem)
+        //     state.curQuestion=state.chosenQuestionGroup[state.questionIndex];
+        //     state.curAnswer=state.examItem.my_answers[state.questionIndex];
+        //     state.llmAnswer=state.curAnswer.llm_answer
+        //     state.totalLength=state.chosenQuestionGroup.length
+        //     state.progress = ((state.questionIndex+1) / state.totalLength) * 100;
+        //     const now = new Date();
+        //     state.startTime=now.getTime();
+        //   )
+ 
+     
+   
+        //   })
+        function initQuestionList(){
           state.examId=Session.get("examId")
           state.llmAnswer='模型生成答案未加载完毕，请稍后刷新重试'
           examDetail(state.examId).then(data=>{
-            state.examItem=data
-            console.log(state.examItem)
-            state.curQuestion=state.chosenQuestionGroup[state.questionIndex];
-            state.curAnswer=state.examItem.my_answers[state.questionIndex];
-              console.log("changdushi "+state.curAnswer.llm_answer.length)
+            if(data.id){
+              state.examItem=data
+              console.log(state.examItem)
+              state.curQuestion=state.chosenQuestionGroup[state.questionIndex];
+              state.curAnswer=state.examItem.my_answers[state.questionIndex];
               state.llmAnswer=state.curAnswer.llm_answer
-     
-            state.totalLength=state.chosenQuestionGroup.length
-            state.progress = ((state.questionIndex+1) / state.totalLength) * 100;
-            const now = new Date();
-            state.startTime=now.getTime();
+              state.totalLength=state.chosenQuestionGroup.length
+              state.progress = ((state.questionIndex+1) / state.totalLength) * 100;
+              const now = new Date();
+              state.startTime=now.getTime();
+              clearInterval(timer);
+            }else{
+
+            }
+   
           }).catch(e=>{
 				    console.log("在获得评测详情的时候出现错误"+e);
 			    });
 
 		}
+    watch(() => router.currentRoute.value.params.sid, (sid: string) => initQuestionList(), { immediate: true });
 
-        watch(() => router.currentRoute.value.params.sid, (sid: string) => initQuestionList(sid as string), { immediate: true });
+
         return{
             ...toRefs(state),
             setRating,
@@ -156,6 +191,7 @@ import { dateEquals } from 'element-plus';
 
         }
     }
+    
   };
 
   </script>
@@ -246,7 +282,7 @@ import { dateEquals } from 'element-plus';
       }
       .questionGroupName{
         margin: 120px; /* 设置子元素之间的间距 */
-        width: 97px;
+        width:auto;
         height: 28px;
         opacity: 1;
         color: #000000e6;

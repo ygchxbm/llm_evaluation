@@ -264,9 +264,9 @@ export default defineComponent({
 		// 	});
 		// }
 
-		function loadSetting() {
-			getSetting().then(res => state.setting = res);
-		}
+		// function loadSetting() {
+		// 	getSetting().then(res => state.setting = res);
+		// }
 
 		function handleSaveSetting() {
 			state.settingSaving = true;
@@ -282,7 +282,7 @@ export default defineComponent({
 		}
 		// loadQuestion();
 		// loadNpcs();
-		loadSetting();
+		// loadSetting();
 
 		return {
 			setCollapseStyle,

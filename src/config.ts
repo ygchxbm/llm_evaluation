@@ -1,1 +1,1 @@
-export const site = 'oasisme_npc';
+export const site = 'llm_evaluation';

@@ -64,7 +64,16 @@ export default {
             router.push("/transit")
         }
 		function evaluating(){
-			createExam(state.questionSetId,state.modelId).then(data=>{
+			router.push("/answering")
+		}
+		function initQuestionList(sid:string){
+			state.loading=true;
+			state.title = '发起评测';
+			cacheSid = sid;
+			questionSetDetail(state.questionSetId).then((data:{ id:number;set_id:number;question:string;dimension:string;answer:string;}[])=>{
+				console.log(data)
+				state.questionGroups=data;
+				createExam(state.questionSetId,state.modelId).then(data=>{
 				state.examId =data
 				console.log("exam id is " + state.examId)
 				examDetail(state.examId).then(data=> {
@@ -74,7 +83,6 @@ export default {
 					for(let i=0;i<state.examItem.question_count;i++){
 						generateAnswer(state.examId,state.examItem.questions[i].id)
 					}	
-					router.push("/answering")
 				}).catch(e=>{
 				console.log("在获得评测详情的时候出现错误"+e);
 			});
@@ -83,16 +91,6 @@ export default {
 				console.log("在发起评测的时候出现错误"+e);
 
 			})
-		
-		}
-		function initQuestionList(sid:string){
-			state.loading=true;
-			state.title = '发起评测';
-			cacheSid = sid;
-			questionSetDetail(state.questionSetId).then((data:{ id:number;set_id:number;question:string;dimension:string;answer:string;}[])=>{
-				console.log(data)
-				state.questionGroups=data;
-
 			}).catch(e=>{
 				console.log("在请求题库具体题目时出现错误"+e);
 			});

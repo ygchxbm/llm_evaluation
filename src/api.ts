@@ -264,6 +264,13 @@ export function submitScore(exam_detail_id:number,submit_score:number,submit_tim
 export function exportQuestions(id: number) {
     return `/api/llm_evalation.exportQuestions?id=${id}&site=llm_evalation&_optype=export`;
 }
+/**
+ *  修改/新增题库：POST modifyQuestionSet，参数id、name
+ * @param id 
+ */
+export function modifyQuestionSet(name:string){
+    return request(`llm_evalation.modifyQuestionSet?site=llm_evalation`, { method: 'POST', data: { name:name } })
+}
 
 export function npcDetail(id: number): Promise<Npc> {
     return request('/oasisme_npc.npcDetail?id='+id).then(res => res as unknown as Npc);
@@ -274,7 +281,7 @@ export function saveNpc(npc: Npc): Promise<number> {
 }
 
 export function getSetting(): Promise<Setting> {
-    return request('/oasisme_npc.getSetting').then(res => res as unknown as Setting);
+    return request('/llm_evaluation.getSetting?site=llm_evaluation').then(res => res as unknown as Setting);
 }
 
 export function saveSetting(setting: Setting) {

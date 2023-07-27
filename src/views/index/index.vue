@@ -52,6 +52,7 @@
 	<div v-else class="managementMain">
         <button class="import-btn" @click="importNow()">导入题库</button>
 		<button class="export-btn" @click="exportGroup()">导出题库</button>
+		<button class="modify-btn" @click="createNow()">新建题库</button>
 		<div class="indexSquare">
 			<span v-for="groupItem in questionGroupList" :class="{ 'active': groupItem.id===currentGroupId  }" class="indexForGroup" @click="chooseGroup(groupItem)">{{ groupItem.id }}</span>
 		</div>
@@ -96,6 +97,25 @@
 				</div>
 			</template>
 		</el-dialog>
+		<el-dialog width="800" style="max-width: 100%" v-model="createVisible" :close-on-click-modal="false">
+			<template #header>
+				<div class="train-header">
+					<div class="title">创建题库</div>
+				</div>
+			</template>
+			<div class="train-wrap">
+				<el-form label-width="130px">
+					<el-form-item label="新建题库名">
+						<el-input class="nameInput" placeholder="输入题库名称" v-model="submitName"></el-input>
+					</el-form-item>
+				</el-form>
+			</div>
+			<template #footer>
+				<div class="train-footer">
+					<el-button type="primary" class="train-btn" :disabled="!submitName" @click="createGroup()">Create</el-button>
+				</div>
+			</template>
+		</el-dialog>
 	</div>
 
 </template>
@@ -108,7 +128,7 @@ import { useRouter } from 'vue-router';
 import { Plus, DocumentCopy, ChatDotRound, Lock, EditPen,Delete,Share } from '@element-plus/icons-vue';
 import useClipboard from 'vue-clipboard3';
 
-import { Npc, npcList, npcDetail, chat, Message, FileTuneDataType, exportFineTune, importFineTune, saveNpc,  Question ,modelList, modelItem, modifyLlmModel,questionSetList,questionSetDetail, questionSetItem,importQuestions,exportQuestions} from '@/api';
+import { Npc, npcList, npcDetail, chat, Message, FileTuneDataType, exportFineTune, importFineTune, saveNpc,  Question ,modelList, modelItem, modifyLlmModel,questionSetList,questionSetDetail, questionSetItem,importQuestions,exportQuestions,modifyQuestionSet} from '@/api';
 import DefaultAvatar from '@/assets/avatar.png';
 import FolderIcon from '@/assets/folder.png';
 
@@ -148,9 +168,11 @@ export default {
 			judgeContent:[],
 			trainFile: [] as UploadUserFile[],
 			trainVisible:false,
+			createVisible:false,
 			trainMode: 'insert' as 'replace' | 'insert',
 			isSelectedQuestion:false,
 			isEvaluating:false,
+			submitName:null as unknown as string,
 			setName:null,
 			curQuestion:{},
 			curModel:{},
@@ -242,7 +264,9 @@ export default {
 		function importNow(){
 			state.trainVisible=true
 		}
-		
+		function createNow(){
+			state.createVisible=true
+		}
 
         function sendMessage(index: number) {
 			const messageLast = state.messages.length - 1;
@@ -324,6 +348,7 @@ export default {
 						// successBox.remove();
 						state.importSuccess=false;
 					}, 3000);
+					location.reload();
 				}).catch(e=>{
 					state.importUnsuccess=true;
 					let successBox = document.createElement('div');
@@ -359,6 +384,29 @@ export default {
 			// state.questionGroupList = state.questionGroupList.filter(item => item !== questionItem);
 			let index=state.questionGroupList.findIndex((group) => group === questionItem);
 			state.questionGroupList.splice(index,1)
+		}
+
+		function createGroup(){
+			modifyQuestionSet(state.submitName).then(res=>{
+				state.importSuccess=true;
+					let successBox = document.createElement('div');
+					successBox.id = 'success-box';
+					document.body.appendChild(successBox);
+					setTimeout(function() {
+						// successBox.remove();
+						state.importSuccess=false;
+					}, 3000);
+					location.reload();
+			}).catch(e=>{
+					state.importUnsuccess=true;
+					let successBox = document.createElement('div');
+					successBox.id = 'unsuccess-box';
+					document.body.appendChild(successBox);
+					setTimeout(function() {
+						// successBox.remove();
+						state.importUnsuccess=false;
+					}, 3000);
+				})
 		}
 
 		function addSendMessage() {
@@ -520,7 +568,7 @@ export default {
 			goProfile,
 			handleSaveProfile,
 			FolderIcon,
-		
+			createGroup,
 			handleUploadSuccess,
 			handleUploadError,
 
@@ -535,6 +583,7 @@ export default {
 			exportGroup,
 			deleteQuestionGroup,
 			importNow,
+			createNow,
 			filters: {
 				formatPrice(value:any) {
 				return value.toFixed(2)
@@ -780,6 +829,17 @@ export default {
 		right: 28px;
 		z-index: 9999;
 	}
+	.modify-btn{
+		width: 112px;
+		height: 40px;
+		border-radius: 3px;
+		opacity: 1;
+		background: #00a9ceff;
+		position: fixed;
+		top: 150px;
+		right: 28px;
+		z-index: 9999;
+	}
 	.indexSquare{
 		margin-top: 48px;
 		margin-left: calc(10vw - 167px);
@@ -812,6 +872,7 @@ export default {
 		background-color: #fff;
 		padding: 20px;
 		margin-left: 10%;
+		min-height: 80vh;
 		
 		// margin-top: 30px;
 		top:30px;
@@ -918,6 +979,7 @@ export default {
       left: 0;
       width: 100%;
       height: 100%;
+
       z-index: -1;
       background: #ffffffff;
     }
@@ -963,7 +1025,16 @@ export default {
 				opacity: 1;
 				color: #00000066;
 			}
-	}
+		}
+		.nameInput{
+			width: 500px;
+				height: 40px;
+				color: rgba(0, 0, 0, 0.3);
+				font-size: 16px;
+				line-height: 40px;
+				text-align: left;
+				
+		}
 		.tip {
 			color: #e34d59;
 		}
