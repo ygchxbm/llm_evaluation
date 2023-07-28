@@ -152,7 +152,7 @@ export function npcList(useCache = true): Promise<Npc[]> {
  * @returns {isSuccessful}
  */
 export function modifyLlmModel(id:number,conclusion:string){
-    return request(`llm_evalation.modifyLlmModel?site=llm_evalation`, { method: 'POST', data: { id:id,conclusion:conclusion } });
+    return request(`llm_evaluation.modifyLlmModel?site=llm_evaluation`, { method: 'POST', data: { id:id,conclusion:conclusion } });
 }
 /**
  * 
@@ -165,7 +165,7 @@ export function modifyLlmModel(id:number,conclusion:string){
  */
 let modelListCache: modelItem[]|null=null;
 export function modelList():Promise<modelItem[]>{
-    return request('llm_evalation.llmModelList?site=llm_evalation').then(res =>{
+    return request('llm_evaluation.llmModelList?site=llm_evaluation').then(res =>{
         modelListCache=res as unknown as modelItem[];
         console.log(modelListCache)
         return modelListCache;
@@ -174,7 +174,7 @@ export function modelList():Promise<modelItem[]>{
 }
 let questionSetListCache:questionSetItem[]|null=null;
 export function questionSetList():Promise<questionSetItem[]>{
-    return request('llm_evalation.questionSetList?site=llm_evalation').then(res=>{
+    return request('llm_evaluation.questionSetList?site=llm_evaluation').then(res=>{
         questionSetListCache=res as unknown as questionSetItem[];
         console.log(questionSetListCache)
         return questionSetListCache;
@@ -199,7 +199,7 @@ export function questionSetList():Promise<questionSetItem[]>{
  */
 let questionsListCache:Question[]|null=null
 export function questionSetDetail(id:number):Promise<Question[]>{
-    return request(`llm_evalation.questionSetDetail?site=llm_evalation&id=${id}`).then(res=>{
+    return request(`llm_evaluation.questionSetDetail?site=llm_evaluation&id=${id}`).then(res=>{
         questionsListCache=res.questions as unknown as Question[];
         // console.log(questionsListCache)
         return questionsListCache;
@@ -215,7 +215,7 @@ export function questionSetDetail(id:number):Promise<Question[]>{
  * @return {id}
  */
 export function createExam(questionSetId:number,modelId:number,deadline?:string): Promise<number> {
-    return request(`llm_evalation.createExam?site=llm_evalation`, { method: 'POST', data: { question_set_id:questionSetId,llm_model:modelId } }).then(res => res as unknown as number);
+    return request(`llm_evaluation.createExam?site=llm_evaluation`, { method: 'POST', data: { question_set_id:questionSetId,llm_model:modelId } }).then(res => res as unknown as number);
 }
 /**
  * 评测详情
@@ -225,7 +225,7 @@ export function createExam(questionSetId:number,modelId:number,deadline?:string)
 let examItemCache:examItem|null=null
 //todo:在返回id正常后把id=1改成形参
 export function examDetail(id:number):Promise<examItem>{
-    return request(`llm_evalation.examDetail?site=llm_evalation&id=${id}`).then(res=>{
+    return request(`llm_evaluation.examDetail?site=llm_evaluation&id=${id}`).then(res=>{
         examItemCache=res as unknown as examItem;
         console.log(res)
         return examItemCache;
@@ -237,7 +237,7 @@ export function examDetail(id:number):Promise<examItem>{
 export function importQuestions(id: number,file:File) {
     const formData = new FormData();
     formData.append('file', file);
-    return request(`llm_evalation.importQuestions?id=${id}&site=llm_evalation`,{ method: 'POST' ,data:formData});
+    return request(`llm_evaluation.importQuestions?id=${id}&site=llm_evaluation`,{ method: 'POST' ,data:formData});
 }
 
 /**
@@ -245,7 +245,7 @@ export function importQuestions(id: number,file:File) {
  * @param {examid,question_id}
  */
 export function generateAnswer(exam_id:number,question_id:number){
-    return request(`llm_evalation.generateAnswer?site=llm_evalation`, { method: 'POST', data: { exam_id:exam_id,question_id:question_id } })
+    return request(`llm_evaluation.generateAnswer?site=llm_evaluation`, { method: 'POST', data: { exam_id:exam_id,question_id:question_id } })
 }
 
 /**
@@ -255,21 +255,21 @@ export function generateAnswer(exam_id:number,question_id:number){
  * @returns 
  */
 export function submitScore(exam_detail_id:number,submit_score:number,submit_timecost:number,submit_remark?:string){
-    return request(`llm_evalation.submitScore?site=llm_evalation`, { method: 'POST', data: { exam_detail_id:exam_detail_id,submit_score:submit_score,submit_timecost:submit_timecost,submit_remark:submit_remark } })
+    return request(`llm_evaluation.submitScore?site=llm_evaluation`, { method: 'POST', data: { exam_detail_id:exam_detail_id,submit_score:submit_score,submit_timecost:submit_timecost,submit_remark:submit_remark } })
 }
 /**
  *导出题库：GET exportQuestions?id=xxx&_optype=export 加上_optype就是导出excel了 
  * @returns 
  */
 export function exportQuestions(id: number) {
-    return `/api/llm_evalation.exportQuestions?id=${id}&site=llm_evalation&_optype=export`;
+    return `/api/llm_evaluation.exportQuestions?id=${id}&site=llm_evaluation&_optype=export`;
 }
 /**
  *  修改/新增题库：POST modifyQuestionSet，参数id、name
  * @param id 
  */
 export function modifyQuestionSet(name:string){
-    return request(`llm_evalation.modifyQuestionSet?site=llm_evalation`, { method: 'POST', data: { name:name } })
+    return request(`llm_evaluation.modifyQuestionSet?site=llm_evaluation`, { method: 'POST', data: { name:name } })
 }
 
 export function npcDetail(id: number): Promise<Npc> {
@@ -281,7 +281,7 @@ export function saveNpc(npc: Npc): Promise<number> {
 }
 
 export function getSetting(): Promise<Setting> {
-    return request('/llm_evalation.getSetting?site=llm_evalation').then(res => res as unknown as Setting);
+    return request('/llm_evaluation.getSetting?site=llm_evaluation').then(res => res as unknown as Setting);
 }
 
 export function saveSetting(setting: Setting) {

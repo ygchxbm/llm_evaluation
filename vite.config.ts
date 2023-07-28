@@ -35,7 +35,7 @@ const viteConfig = defineConfig((mode: ConfigEnv) => {
 			},
 		},
 		build: {
-			outDir: 'llm_evalation',
+			outDir: 'llm_evaluation',
 			chunkSizeWarningLimit: 1500,
 			rollupOptions: {
 				output: {
