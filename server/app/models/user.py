@@ -56,15 +56,11 @@ class User(model.BaseModel):
     def get(cls, user_id):
         user = cls.query.filter(User.id==user_id).first()
         return user
-    
+
     @classmethod
-    def set_count(cls, ip, count):
-        
-        ipCount = cls.query.filter(IpCount.ip==ip).first()
-        if None == ipCount:
-            ipCount = IpCount(ip, count)
-            db.session.add(ipCount)
-            db.session.commit()
-        
-        ipCount.count = count
-        db.session.commit()
+    def list(cls, ids):
+        if len(ids) > 0:
+            stu_obj = cls.query.filter(User.id.in_(ids)).all()
+        else:
+            stu_obj = cls.query.all()
+        return stu_obj

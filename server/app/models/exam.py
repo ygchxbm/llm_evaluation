@@ -10,31 +10,43 @@ class Exam(model.BaseModel):
     __tablename__ = 'llme_exam'
 
     create_user_id = db.Column(db.Integer, index=True, nullable=False)  # 创建人
-    create_user = ""
+    create_user = db.Column(db.String(50), nullable=False)
     deadline = db.Column(db.DateTime, nullable=False)  # 期限
     llm_model_id = db.Column(db.Integer, index=True, nullable=False)  # ai模型id
     question_set_id = db.Column(db.Integer, index=True, nullable=False)  # 题库id
+    question_count = db.Column(db.Integer, default=0, nullable=False)  # 题目数量
+    submit_count = db.Column(db.Integer, default=0, nullable=False)  # 提交数量
 
-    def __init__(self, ip=None, count=None):
-        self.ip = ip
-        self.count = count
+    def __init__(self, create_user_id=None, create_user=None, deadline=None, llm_model_id=None, question_set_id=None, question_count=None, submit_count=None):
+        self.create_user_id = create_user_id
+        self.create_user = create_user
+        self.deadline = deadline
+        self.llm_model_id = llm_model_id
+        self.question_set_id = question_set_id
+        self.question_count = question_count
+        self.submit_count = submit_count
 
     @classmethod
-    def get_count(cls, ip):
-        count = cls.query.filter(IpCount.ip==ip).first()
-        if None == count:
-            return 0            
-        
-        return count.count
-    
+    def get(cls, id):
+        exam = cls.query.filter(Exam.id==id).first()
+        return exam
+
     @classmethod
-    def set_count(cls, ip, count):
-        
-        ipCount = cls.query.filter(IpCount.ip==ip).first()
-        if None == ipCount:
-            ipCount = IpCount(ip, count)
-            db.session.add(ipCount)
-            db.session.commit()
-        
-        ipCount.count = count
+    def list_paginate(cls, page):
+        per_page = 20
+        stu_obj = cls.query.paginate(page, per_page, error_out=False)
+        return stu_obj
+
+    @classmethod
+    def list(cls, ids):
+        if len(ids) > 0:
+            stu_obj = cls.query.filter(Exam.id.in_(ids)).all()
+        else:
+            stu_obj = cls.query.all()
+        return stu_obj
+
+    @classmethod
+    def add(cls, create_user_id, create_user, deadline, llm_model_id, question_set_id, question_count, submit_count):
+        db.session.add(Exam(create_user_id=create_user_id, create_user=create_user, deadline=deadline, llm_model_id=llm_model_id, question_set_id=question_set_id, question_count=question_count, submit_count=submit_count))
         db.session.commit()
+        return

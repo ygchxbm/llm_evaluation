@@ -9,11 +9,9 @@ def question_set_detail(id):
 
     question_set = QuestionSet.get(id)
     if question_set is None:
-        raise NotFoundError()
+        return NotFoundError()
 
     question_list = Question.list(id)
+    question_set.questions = question_list
 
-    return Success({
-        'question_set': question_set,
-        'question_list': question_list,
-    })
+    return Success(question_set)

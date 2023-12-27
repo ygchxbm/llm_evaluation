@@ -23,8 +23,9 @@ class LlmModel(model.BaseModel):
     conclusion = db.Column(db.String(500))  # 结论
     conclusion_user_id = db.Column(db.Integer, index=True)  # 结论人
     conclusion_user = db.Column(db.String(50))
+    exam_count = db.Column(db.Integer)  # 考试次数
 
-    def __init__(self, name=None, model_name=None, type_id=None, scale=None, conclusion=None, conclusion_user_id=None, conclusion_user=None):
+    def __init__(self, name=None, model_name=None, type_id=None, scale=None, conclusion=None, conclusion_user_id=None, conclusion_user=None, exam_count=None):
         self.name = name
         self.model_name = model_name
         self.type_id = type_id
@@ -32,10 +33,29 @@ class LlmModel(model.BaseModel):
         self.conclusion = conclusion
         self.conclusion_user_id = conclusion_user_id
         self.conclusion_user = conclusion_user
+        self.exam_count = exam_count
 
     @classmethod
-    def list(cls):
-        stu_obj = cls.query.all()
+    def get(cls, id):
+        llm_model = cls.query.filter(LlmModel.id==id).first()
+        return llm_model
+
+    @classmethod
+    def list(cls, ids):
+        if len(ids) > 0:
+            stu_obj = cls.query.filter(LlmModel.id.in_(ids)).all()
+        else:
+            stu_obj = cls.query.all()
+        for stu in stu_obj:
+            stu.type = LlmModel(stu.type_id).name
+        return stu_obj
+
+    @classmethod
+    def list_4_not_ids(cls, not_ids):
+        if len(not_ids) > 0:
+            stu_obj = cls.query.filter(~LlmModel.id.in_(not_ids)).all()
+        else:
+            stu_obj = cls.query.all()
         for stu in stu_obj:
             stu.type = LlmModel(stu.type_id).name
         return stu_obj

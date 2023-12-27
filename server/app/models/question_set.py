@@ -28,8 +28,11 @@ class QuestionSet(model.BaseModel):
         return question_set
 
     @classmethod
-    def list(cls):
-        stu_obj = cls.query.all()
+    def list(cls, ids):
+        if len(ids) > 0:
+            stu_obj = cls.query.filter(QuestionSet.id.in_(ids)).all()
+        else:
+            stu_obj = cls.query.all()
         return stu_obj
 
     @classmethod
