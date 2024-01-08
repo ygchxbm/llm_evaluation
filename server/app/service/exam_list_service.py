@@ -6,10 +6,10 @@ from ..models.question_set import QuestionSet
 from ..models.llm_model import LlmModel
 
 
-def exam_list(page):
+def exam_list(page_num, page_size):
     Log.info('exam_list')
 
-    exam_list = Exam.list_paginate(page)
+    exam_list = Exam.list_paginate(page_num, page_size)
 
     set_ids = [exam.question_set_id for exam in exam_list.items]
     question_set_list = QuestionSet.list(set_ids)
@@ -35,4 +35,9 @@ def exam_list(page):
         else:
             return NotFoundError('llm_model_id:{}'.format(exam.llm_model_id))
 
-    return Success(exam_list.items)
+    exam_list.items = [exam.to_dict() for exam in exam_list.items]
+
+    return Success({
+        'total': exam_list.total,
+        'items': exam_list.items,
+    })

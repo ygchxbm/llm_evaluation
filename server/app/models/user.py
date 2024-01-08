@@ -58,9 +58,24 @@ class User(model.BaseModel):
         return user
 
     @classmethod
+    def get_by_openid(cls, oasis_openid):
+        user = cls.query.filter(User.oasis_openid==oasis_openid).first()
+        return user
+
+    @classmethod
     def list(cls, ids):
         if len(ids) > 0:
             stu_obj = cls.query.filter(User.id.in_(ids)).all()
         else:
             stu_obj = cls.query.all()
         return stu_obj
+
+    @classmethod
+    def add(cls, oasis_openid, birthdate, email, email_verified, family_name, gender,
+                 given_name, locale, middle_name, name, phone_number, phone_number_verified,
+                 picture, preferred_username, profile, sub, oasis_updated_at, website, zoneinfo):
+        db.session.add(User(oasis_openid=oasis_openid, birthdate=birthdate, email=email, email_verified=email_verified, family_name=family_name, gender=gender,
+                            given_name=given_name, locale=locale, middle_name=middle_name, name=name, phone_number=phone_number, phone_number_verified=phone_number_verified,
+                            picture=picture, preferred_username=preferred_username, profile=profile, sub=sub, oasis_updated_at=oasis_updated_at, website=website, zoneinfo=zoneinfo))
+        db.session.commit()
+        return

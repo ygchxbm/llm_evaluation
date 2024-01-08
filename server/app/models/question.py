@@ -15,11 +15,16 @@ class Question(model.BaseModel):
     question = db.Column(db.Text)  # 题目内容
     answer = db.Column(db.Text)
 
-    def __init__(self, question_bank_id=None, dimension_id=None, question=None, answer=None):
-        self.question_bank_id = question_bank_id
-        self.dimension_id = dimension_id
+    def __init__(self, question_set_id=None, dimension=None, question=None, answer=None):
+        self.question_set_id = question_set_id
+        self.dimension = dimension
         self.question = question
         self.answer = answer
+
+    @classmethod
+    def get(cls, id):
+        question = cls.query.filter(Question.id==id).first()
+        return question
 
     @classmethod
     def list(cls, set_id):

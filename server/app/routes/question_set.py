@@ -37,13 +37,8 @@ def modify():
 
     Log.info('recv question_set_bp modify request type:{}'.format(request.method))
 
-    set_id = request.args.get('set_id', None)
-    if set_id is None:
-        return jsonify(msg='set_id error')
-    else:
-        set_id = int(set_id)
-
-    name = request.json.get('name', None)
+    set_id = request.form.get('set_id')
+    name = request.form.get('name')
 
     current_user = get_jwt_identity()
 

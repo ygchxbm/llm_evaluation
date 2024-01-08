@@ -1,41 +1,154 @@
-from app.serializer.common import Success, NotFoundError
+import json
+import time
+import datetime
+from app.serializer.common import Success, NotFoundError, ServerError
 from app.log import Log
 from ..models.exam import Exam
 from ..models.exam_detail import ExamDetail
 from ..models.question import Question
 from ..models.llm_model import LlmModel
-from ..models.user import User
+from ..util.chatgpt import completions_api
 
 
-def exam_detail(id):
+def exam_detail(exam_id):
     Log.info('exam_detail')
 
-    exam = Exam.get(id)
+    exam = Exam.get(exam_id)
+    if exam is None:
+        return NotFoundError()
+    exam = exam.to_dict()
+
+    llm_model = LlmModel.get(exam['llm_model_id'])
+    if exam is None:
+        return NotFoundError()
+    exam['llm_model_name'] = llm_model.name
+
+    questions = Question.list(exam['question_set_id'])
+    questions = [question.to_dict() for question in questions]
+    exam['questions'] = questions
+
+    answers = ExamDetail.list(exam['id'])
+    answers = [answer.to_dict() for answer in answers]
+    exam['my_answers'] = answers
+
+    other_models = LlmModel.list_4_not_ids([exam['llm_model_id']])
+    other_model_ids = [model.id for model in other_models]
+    other_exams = Exam.list(other_model_ids)
+    other_exam_ids = [exam.id for exam in other_exams]
+    question_ids = [question['id'] for question in questions]
+    other_answers = ExamDetail.list_4_other_answers(other_exam_ids, question_ids)
+    for i in range(len(other_answers)):
+        other_answers[i]['llm_model_name'] = ''
+        for other_model in other_models:
+            if other_model.id == other_answers[i]['llm_model_id']:
+                other_answers[i]['llm_model_name'] = other_model.name
+                break
+    other_answers = [other_answer.to_dict() for other_answer in other_answers]
+
+    exam['other_answers'] = other_answers
+
+    return Success(exam)
+
+
+def generate_answer(exam_id, question_id, current_user):
+    Log.info('generate_answer')
+
+    exam = Exam.get(exam_id)
     if exam is None:
         return NotFoundError()
 
     llm_model = LlmModel.get(exam.llm_model_id)
-    exam.llm_model_name = llm_model.name
+    if exam is None:
+        return NotFoundError()
 
-    questions = Question.list(exam.question_set_id)
-    exam.questions = questions
+    answer = ExamDetail.get_answer(exam_id, question_id, current_user['id'])
 
-    answers = ExamDetail.list(exam.id)
-    exam.answers = answers
+    if answer is None:
+        question = Question.get(question_id)
+        if question is None:
+            return NotFoundError()
+        question_str = question.question
+        dimension = question.dimension
+        llm_gen_count = 1
+        detailId = 0
+    else:
+        question_str = answer.question
+        dimension = answer.dimension
+        llm_gen_count = answer.llm_gen_count + 1
+        detailId = answer.id
 
-    other_models = LlmModel.list_4_not_ids([exam.llm_model_id])
-    other_model_ids = [model.id for model in other_models]
-    other_exams = Exam.list(other_model_ids)
-    other_exam_ids = [exam.id for exam in other_exams]
-    question_ids = [question.id for question in questions]
-    other_answers = ExamDetail.list_4_other_answers(other_exam_ids, question_ids)
-    exam.other_answers = other_answers
+    start_time = time.time()
+    status_code, text, answer = completions_api(llm_model.model_name, [{'role': 'user', 'content': question_str}])
+    if status_code != 200:
+        return ServerError(text)
 
-    for i in range(exam.other_answers):
-        exam.other_answers[i]['llm_model_name'] = ''
-        for other_model in other_models:
-            if other_model.id == exam.other_answers[i]['llm_model_id']:
-                exam.other_answers[i]['llm_model_name'] = other_model.name
-                break
+    llm_answer = answer
+    llm_timecost = (time.time() - start_time) * 1000
+    exam_detail_id = ExamDetail.save_llm_answer(detailId, exam_id, question_id, question_str, dimension, llm_answer, llm_timecost, llm_gen_count, current_user['id'], current_user['name'])
 
-    return Success(exam)
+    exam_detail = ExamDetail.get(exam_detail_id)
+    if exam_detail is None:
+        return NotFoundError()
+
+    return Success(exam_detail.to_dict())
+
+
+def submit_score(exam_detail_id, submit_score, submit_remark, submit_timecost, current_user):
+    Log.info('submit_score')
+
+    exam_detail = ExamDetail.get(exam_detail_id)
+    if exam_detail is None:
+        return NotFoundError("没有找到评测详情")
+
+    exam = Exam.get(exam_detail.exam_id)
+    if exam is None:
+        return NotFoundError("没有找到评测")
+
+    ExamDetail.update_submit(exam_detail.id, submit_score, current_user['id'], current_user['name'], datetime.datetime.now(), submit_remark, submit_timecost)
+
+    # 检查是否是最后一题
+    done_count = ExamDetail.get_finished_submit_count(exam_detail.exam_id, current_user['id'])
+    if exam.question_count <= done_count:
+        _update_model_score(exam.llm_model_id)
+        _update_exam_submit_count(exam.id)
+
+    return Success("success")
+
+
+def _update_model_score(llm_model_id):
+    exams = Exam.list_4_model(llm_model_id)
+    exam_ids = [exam.id for exam in exams]
+
+    results = ExamDetail.get_submit_score(exam_ids)
+
+    score_sum = 0
+    score_cnt = 0
+    score_detail = {}
+
+    for i in range(len(results)):
+        result = results[i]
+        score_sum += result[0]
+        score_cnt += result[1]
+        dimension = result[2]
+        if dimension not in score_detail:
+            score_detail[dimension] = {'cnt': 0, 'score': 0}
+        score_detail[dimension]['score'] += result[0]
+        score_detail[dimension]['cnt'] += result[1]
+
+    for k, v in score_detail.items():
+        score_detail[k] = v['score'] / v['cnt']
+
+    score_detail_str = json.dumps(score_detail, ensure_ascii=False, default=float)
+    LlmModel.update_submit(llm_model_id, len(exam_ids), score_sum/score_cnt, score_detail_str)
+
+
+def _update_exam_submit_count(exam_id):
+    exam = Exam.get(exam_id)
+
+    results = ExamDetail.get_submit_score_by_user_id(exam_id)
+    submit_count = 0
+    for i in range(len(results)):
+        result = results[i]
+        submit_count += result[0]
+
+    Exam.update_submit_count(exam.id, submit_count)

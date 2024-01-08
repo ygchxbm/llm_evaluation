@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy.dialects.mysql import insert
 
 from . import db
 from app.models import model
@@ -39,9 +40,9 @@ class QuestionSet(model.BaseModel):
     def modify(cls, id, name, modify_user_id, modify_user):
 
         # 查询数据
-        question_set = cls.query.filter(QuestionSet.id == id).one()
+        question_set = cls.query.filter(QuestionSet.id == id).first()
         if question_set is None:
-            return False
+            return question_set
 
         # 修改数据
         question_set.name = name
@@ -49,4 +50,30 @@ class QuestionSet(model.BaseModel):
         question_set.modify_user = modify_user
         # 提交即保存到数据库
         db.session.commit()
-        return True
+        return question_set
+
+
+    @classmethod
+    def save(cls, id, name, user_id, user):
+        # 假设my_table是你的数据表，data是你要插入或更新的数据
+        insert_stmt = insert(QuestionSet).values(
+            id=id,
+            name = name,
+            create_user_id = user_id,
+            create_user = user,
+            modify_user_id = user_id,
+            modify_user = user,
+        )
+
+        on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
+            name = name,
+            modify_user_id = user_id,
+            modify_user = user,
+            updated_at=db.func.now(),
+        )
+
+        result = db.session.execute(on_duplicate_key_stmt)
+        db.session.flush()
+        db.session.commit()
+
+        return result.lastrowid

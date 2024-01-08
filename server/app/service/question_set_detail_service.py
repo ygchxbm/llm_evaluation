@@ -9,9 +9,10 @@ def question_set_detail(id):
 
     question_set = QuestionSet.get(id)
     if question_set is None:
-        return NotFoundError()
+        return NotFoundError("未找到")
 
     question_list = Question.list(id)
-    question_set.questions = question_list
+    question_set = question_set.to_dict()
+    question_set['questions'] = [question.to_dict() for question in question_list]
 
     return Success(question_set)

@@ -112,6 +112,12 @@ class UnsupportedMethod(Base):
     message = '不支持的请求方法'
 
 
+class ParamError(Base):
+    error_code = 2009
+    data = None
+    message = '参数错误'
+
+
 class ServerError(Base):
     error_code = 3000
     data = None

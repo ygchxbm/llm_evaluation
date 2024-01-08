@@ -11,7 +11,7 @@ class Exam(model.BaseModel):
 
     create_user_id = db.Column(db.Integer, index=True, nullable=False)  # 创建人
     create_user = db.Column(db.String(50), nullable=False)
-    deadline = db.Column(db.DateTime, nullable=False)  # 期限
+    deadline = db.Column(db.DateTime)  # 期限
     llm_model_id = db.Column(db.Integer, index=True, nullable=False)  # ai模型id
     question_set_id = db.Column(db.Integer, index=True, nullable=False)  # 题库id
     question_count = db.Column(db.Integer, default=0, nullable=False)  # 题目数量
@@ -32,9 +32,13 @@ class Exam(model.BaseModel):
         return exam
 
     @classmethod
-    def list_paginate(cls, page):
-        per_page = 20
-        stu_obj = cls.query.paginate(page, per_page, error_out=False)
+    def list_paginate(cls, page_num, page_size):
+        stu_obj = cls.query.paginate(page=page_num, per_page=page_size, error_out=False)
+        return stu_obj
+
+    @classmethod
+    def list_4_model(cls, llm_model_id):
+        stu_obj = cls.query.filter(Exam.llm_model_id==llm_model_id).all()
         return stu_obj
 
     @classmethod
@@ -47,6 +51,21 @@ class Exam(model.BaseModel):
 
     @classmethod
     def add(cls, create_user_id, create_user, deadline, llm_model_id, question_set_id, question_count, submit_count):
-        db.session.add(Exam(create_user_id=create_user_id, create_user=create_user, deadline=deadline, llm_model_id=llm_model_id, question_set_id=question_set_id, question_count=question_count, submit_count=submit_count))
+        exam = Exam(create_user_id=create_user_id, create_user=create_user, deadline=deadline, llm_model_id=llm_model_id, question_set_id=question_set_id, question_count=question_count, submit_count=submit_count)
+        db.session.add(exam)
+        db.session.flush()
         db.session.commit()
-        return
+        return exam
+
+    @classmethod
+    def update_submit_count(cls, exam_id, submit_count):
+
+        # 修改数据
+        cls.query.filter(Exam.id == exam_id).update({
+            'submit_count': submit_count,
+            'updated_at': db.func.now(),
+        })
+
+        # 提交即保存到数据库
+        db.session.commit()
+        return True
