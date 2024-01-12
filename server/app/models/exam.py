@@ -1,3 +1,4 @@
+from sqlalchemy import create_engine, and_, or_
 from . import db
 from app.models import model
 
@@ -16,8 +17,9 @@ class Exam(model.BaseModel):
     question_set_id = db.Column(db.Integer, index=True, nullable=False)  # 题库id
     question_count = db.Column(db.Integer, default=0, nullable=False)  # 题目数量
     submit_count = db.Column(db.Integer, default=0, nullable=False)  # 提交数量
+    submit_score = db.Column(db.Integer, nullable=False, default=-1)  # 提交分数
 
-    def __init__(self, create_user_id=None, create_user=None, deadline=None, llm_model_id=None, question_set_id=None, question_count=None, submit_count=None):
+    def __init__(self, create_user_id=None, create_user=None, deadline=None, llm_model_id=None, question_set_id=None, question_count=None, submit_count=None, submit_score=None):
         self.create_user_id = create_user_id
         self.create_user = create_user
         self.deadline = deadline
@@ -25,6 +27,7 @@ class Exam(model.BaseModel):
         self.question_set_id = question_set_id
         self.question_count = question_count
         self.submit_count = submit_count
+        self.submit_score = submit_score
 
     @classmethod
     def get(cls, id):
@@ -32,8 +35,17 @@ class Exam(model.BaseModel):
         return exam
 
     @classmethod
-    def list_paginate(cls, page_num, page_size):
-        stu_obj = cls.query.paginate(page=page_num, per_page=page_size, error_out=False)
+    def list_paginate(cls, page_num, page_size, llm_model_id, create_user_id, created_time_min, created_time_max):
+        filters = [Exam.deleted_at.is_(None)]
+        if create_user_id > 0:
+            filters.append(Exam.create_user_id == create_user_id)
+        if created_time_min:
+            filters.append(Exam.created_at >= created_time_min)
+        if created_time_max:
+            filters.append(Exam.created_at <= created_time_max)
+        if llm_model_id > 0:
+            filters.append(Exam.llm_model_id == llm_model_id)
+        stu_obj = cls.query.filter(and_(*filters)).paginate(page=page_num, per_page=page_size, error_out=False)
         return stu_obj
 
     @classmethod
@@ -58,11 +70,12 @@ class Exam(model.BaseModel):
         return exam
 
     @classmethod
-    def update_submit_count(cls, exam_id, submit_count):
+    def update_submit_count(cls, exam_id, submit_count, submit_score):
 
         # 修改数据
         cls.query.filter(Exam.id == exam_id).update({
             'submit_count': submit_count,
+            'submit_score': submit_score,
             'updated_at': db.func.now(),
         })
 

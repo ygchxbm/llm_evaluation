@@ -2,7 +2,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.log import Log
-from app.service import question_set_list_service, question_set_detail_service, question_set_modify_service
+from app.service import question_set_list_service, question_set_detail_service, question_set_modify_service, question_set_delete_service
 
 question_set_bp = Blueprint('question_set_bp', __name__)
 
@@ -39,7 +39,24 @@ def modify():
 
     set_id = request.form.get('set_id')
     name = request.form.get('name')
+    if len(name) == 0:
+        return jsonify(msg='name error')
 
     current_user = get_jwt_identity()
 
     return question_set_modify_service.question_set_modify(set_id, name, current_user)
+
+
+@question_set_bp.route('/delete', methods=['POST'])
+@jwt_required()
+def delete():
+
+    Log.info('recv question_set_bp delete request type:{}'.format(request.method))
+
+    set_id = request.form.get('set_id')
+    if set_id is None:
+        return jsonify(msg='set_id error')
+
+    current_user = get_jwt_identity()
+
+    return question_set_delete_service.question_set_delete(set_id, current_user)

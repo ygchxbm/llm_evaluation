@@ -1,5 +1,5 @@
 from sqlalchemy.dialects.mysql import insert
-from sqlalchemy import func
+from sqlalchemy import func, UniqueConstraint
 from . import db
 from app.models import model
 
@@ -28,7 +28,7 @@ class ExamDetail(model.BaseModel):
 
     # 定义联合唯一索引
     __table_args__ = (
-        db.UniqueConstraint('exam_id', 'question_id', 'submit_user_id'),
+        UniqueConstraint('exam_id', 'question_id', 'submit_user_id', name='uix_exam_question'),
     )
 
     def __init__(self, exam_id=None, question_id=None, question=None, dimension=None, llm_answer=None, llm_timecost=None, llm_gen_count=None, submit_score=None, submit_user_id=None, submit_user=None, submit_time=None, submit_remark=None, submit_timecost=None, submit_count=None):
@@ -128,5 +128,5 @@ class ExamDetail(model.BaseModel):
 
     @classmethod
     def get_submit_score_by_user_id(cls, exam_id):
-        result = db.session.query(func.count(1), ExamDetail.submit_user_id).filter(ExamDetail.submit_score >= 0, ExamDetail.exam_id==exam_id).group_by(ExamDetail.submit_user_id).all()
+        result = db.session.query(func.sum(ExamDetail.submit_score), func.count(1), ExamDetail.submit_user_id).filter(ExamDetail.submit_score >= 0, ExamDetail.exam_id==exam_id).group_by(ExamDetail.submit_user_id).all()
         return result

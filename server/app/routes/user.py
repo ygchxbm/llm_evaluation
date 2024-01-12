@@ -2,7 +2,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_current_user
 from app.log import Log
-from app.service import login_service
+from app.service import login_service, user_list_service
 from app.serializer.common import Success, NotFoundError
 
 user_bp = Blueprint('user_bp', __name__)
@@ -34,3 +34,11 @@ def me():
         return NotFoundError("没有找到用户")
 
     return Success(current_user)
+
+@user_bp.route('/list', methods=['GET'])
+@jwt_required()
+def user_list():
+
+    Log.info('recv user_bp user_list request type:{}'.format(request.method))
+
+    return user_list_service.user_list()

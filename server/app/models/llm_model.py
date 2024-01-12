@@ -21,6 +21,7 @@ class LlmModel(model.BaseModel):
     type = ""
     score = db.Column(db.Integer, nullable = False)
     score_detail = db.Column(db.Text)
+    score_detail_question_set = db.Column(db.Text)
     scale = db.Column(db.Integer, nullable = False)  # 规模大小，单位：
     conclusion = db.Column(db.String(500))  # 结论
     conclusion_user_id = db.Column(db.Integer, index=True)  # 结论人
@@ -81,15 +82,19 @@ class LlmModel(model.BaseModel):
         return True
 
     @classmethod
-    def update_submit(cls, llm_model_id, exam_count, score, score_detail):
-
-        # 修改数据
-        cls.query.filter(LlmModel.id == llm_model_id).update({
+    def update_submit(cls, llm_model_id, exam_count, score, score_detail, score_detail_question_set):
+        update_dict = {
             'exam_count': exam_count,
             'score': score,
-            'score_detail': score_detail,
             'updated_at': db.func.now(),
-        })
+        }
+        if len(score_detail) > 0:
+            update_dict['score_detail'] = score_detail
+        if len(score_detail_question_set) > 0:
+            update_dict['score_detail_question_set'] = score_detail_question_set
+
+        # 修改数据
+        cls.query.filter(LlmModel.id == llm_model_id).update(update_dict)
 
         # 提交即保存到数据库
         db.session.commit()

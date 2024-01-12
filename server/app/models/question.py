@@ -23,12 +23,12 @@ class Question(model.BaseModel):
 
     @classmethod
     def get(cls, id):
-        question = cls.query.filter(Question.id==id).first()
+        question = cls.query.filter(Question.id==id, Question.deleted_at.is_(None)).first()
         return question
 
     @classmethod
     def list(cls, set_id):
-        stu_obj = cls.query.filter(Question.question_set_id == set_id).all()
+        stu_obj = cls.query.filter(Question.question_set_id == set_id, Question.deleted_at.is_(None)).all()
         return stu_obj
 
     @classmethod

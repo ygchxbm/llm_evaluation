@@ -110,7 +110,7 @@ def submit_score(exam_detail_id, submit_score, submit_remark, submit_timecost, c
     done_count = ExamDetail.get_finished_submit_count(exam_detail.exam_id, current_user['id'])
     if exam.question_count <= done_count:
         _update_model_score(exam.llm_model_id)
-        _update_exam_submit_count(exam.id)
+        _update_exam_submit_count_and_score(exam.id)
 
     return Success("success")
 
@@ -124,31 +124,54 @@ def _update_model_score(llm_model_id):
     score_sum = 0
     score_cnt = 0
     score_detail = {}
+    score_detail_question_set = {}
 
     for i in range(len(results)):
         result = results[i]
         score_sum += result[0]
         score_cnt += result[1]
         dimension = result[2]
+        exam_id = result[3]
+        question_set_id = 0
+        for exam in exams:
+            if exam.id == exam_id:
+                question_set_id = exam.question_set_id
+                break
+
         if dimension not in score_detail:
             score_detail[dimension] = {'cnt': 0, 'score': 0}
         score_detail[dimension]['score'] += result[0]
         score_detail[dimension]['cnt'] += result[1]
 
+        if question_set_id > 0:
+            if question_set_id not in score_detail_question_set:
+                score_detail_question_set[question_set_id] = {'cnt': 0, 'score': 0}
+            score_detail_question_set[question_set_id]['score'] += result[0]
+            score_detail_question_set[question_set_id]['cnt'] += result[1]
+
     for k, v in score_detail.items():
         score_detail[k] = v['score'] / v['cnt']
 
+    for k, v in score_detail_question_set.items():
+        score_detail_question_set[k] = v['score'] / v['cnt']
+
     score_detail_str = json.dumps(score_detail, ensure_ascii=False, default=float)
-    LlmModel.update_submit(llm_model_id, len(exam_ids), score_sum/score_cnt, score_detail_str)
+
+    score_detail_question_set_str = json.dumps(score_detail_question_set, ensure_ascii=False, default=float)
+
+    LlmModel.update_submit(llm_model_id, len(exam_ids), score_sum/score_cnt, score_detail_str, score_detail_question_set_str)
 
 
-def _update_exam_submit_count(exam_id):
+def _update_exam_submit_count_and_score(exam_id):
     exam = Exam.get(exam_id)
 
     results = ExamDetail.get_submit_score_by_user_id(exam_id)
+    submit_score= 0
     submit_count = 0
     for i in range(len(results)):
         result = results[i]
-        submit_count += result[0]
+        submit_score += result[0]
+        submit_count += result[1]
+    submit_score = submit_score/len(results)
 
-    Exam.update_submit_count(exam.id, submit_count)
+    Exam.update_submit_count(exam.id, submit_count, submit_score)

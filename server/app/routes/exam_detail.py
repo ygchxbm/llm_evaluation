@@ -47,7 +47,7 @@ def submit_score():
     if submit_score is None:
         return jsonify(msg='submit_score error')
     else:
-        submit_score = int(submit_score)
+        submit_score = float(submit_score)
     if submit_score < 0 or submit_score > 10:
         return ParamError('Bad Score')
 

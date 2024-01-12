@@ -45,11 +45,15 @@ def completions_api(model, messages):
 
     result = response.json()
     if 'choices' in result:
-        answer = result['choices'][0]['message']['content']
+        if result['choices'] == None or len(result['choices']) == 0:
+            return response.status_code, response.text, None
+        else:
+            answer = result['choices'][0]['message']['content']
     elif 'result' in result:
         answer = result['result']
+    elif 'error' in result:
+        return response.status_code, response.text, None
     else:
-        print(response)
         return response.status_code, response.text, None
 
     return response.status_code, response.text, answer

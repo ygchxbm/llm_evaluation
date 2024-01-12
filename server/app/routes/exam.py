@@ -15,8 +15,12 @@ def exam_list():
 
     page_num = request.args.get('page_num', 1, type=int)
     page_size = request.args.get('page_size', 20, type=int)
+    llm_model_id = request.args.get('llm_model_id', 0, type=int)
+    create_user_id = request.args.get('create_user_id', 0, type=int)
+    created_time_min = request.args.get('created_time_min', 0, type=int)
+    created_time_max = request.args.get('created_time_max', 0, type=int)
 
-    return exam_list_service.exam_list(page_num, page_size)
+    return exam_list_service.exam_list(page_num, page_size, llm_model_id, create_user_id, created_time_min, created_time_max)
 
 
 @exam_bp.route('/detail', methods=['GET'])

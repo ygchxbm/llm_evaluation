@@ -1,8 +1,10 @@
 from datetime import datetime
 from sqlalchemy.dialects.mysql import insert
+from sqlalchemy import UniqueConstraint
 
 from . import db
 from app.models import model
+from .question import Question
 
 # https://dormousehole.readthedocs.io/en/latest/patterns/sqlalchemy.html
 # 增删改查 https://blog.csdn.net/Co_zy/article/details/77937195
@@ -25,15 +27,15 @@ class QuestionSet(model.BaseModel):
 
     @classmethod
     def get(cls, id):
-        question_set = cls.query.filter(QuestionSet.id==id).first()
+        question_set = cls.query.filter(QuestionSet.id==id, QuestionSet.deleted_at.is_(None)).first()
         return question_set
 
     @classmethod
     def list(cls, ids):
         if len(ids) > 0:
-            stu_obj = cls.query.filter(QuestionSet.id.in_(ids)).all()
+            stu_obj = cls.query.filter(QuestionSet.id.in_(ids), QuestionSet.deleted_at.is_(None)).all()
         else:
-            stu_obj = cls.query.all()
+            stu_obj = cls.query.filter(QuestionSet.deleted_at.is_(None)).all()
         return stu_obj
 
     @classmethod
@@ -51,6 +53,33 @@ class QuestionSet(model.BaseModel):
         # 提交即保存到数据库
         db.session.commit()
         return question_set
+
+    @classmethod
+    def delete(cls, id, modify_user_id, modify_user):
+
+        try:
+            # 查询数据
+            question_set = cls.query.filter(QuestionSet.id == id).first()
+            if question_set is None:
+                return question_set
+
+            # 修改数据
+            question_set.deleted_at = datetime.now()
+            question_set.modify_user_id = modify_user_id
+            question_set.modify_user = modify_user
+
+            questions = Question.query.filter(Question.question_set_id == id).all()
+            for question in questions:
+                question.deleted_at = datetime.now()
+                question.modify_user_id = modify_user_id
+                question.modify_user = modify_user
+
+            # 提交即保存到数据库
+            db.session.commit()
+            return True
+        except:
+            db.session.rollback()
+            return False
 
 
     @classmethod
