@@ -125,6 +125,7 @@ def _update_model_score(llm_model_id):
     score_cnt = 0
     score_detail = {}
     score_detail_question_set = {}
+    question_set_exam_id = {}
 
     for i in range(len(results)):
         result = results[i]
@@ -149,6 +150,10 @@ def _update_model_score(llm_model_id):
             score_detail_question_set[question_set_id]['score'] += result[0]
             score_detail_question_set[question_set_id]['cnt'] += result[1]
 
+            if question_set_id not in question_set_exam_id:
+                question_set_exam_id[question_set_id] = []
+            question_set_exam_id[question_set_id].append(exam_id)
+
     for k, v in score_detail.items():
         score_detail[k] = v['score'] / v['cnt']
 
@@ -159,7 +164,9 @@ def _update_model_score(llm_model_id):
 
     score_detail_question_set_str = json.dumps(score_detail_question_set, ensure_ascii=False, default=float)
 
-    LlmModel.update_submit(llm_model_id, len(exam_ids), score_sum/score_cnt, score_detail_str, score_detail_question_set_str)
+    question_set_exam_id_str = json.dumps(question_set_exam_id, ensure_ascii=False, default=float)
+
+    LlmModel.update_submit(llm_model_id, len(exam_ids), score_sum/score_cnt, score_detail_str, score_detail_question_set_str, question_set_exam_id_str)
 
 
 def _update_exam_submit_count_and_score(exam_id):
