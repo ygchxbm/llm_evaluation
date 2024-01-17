@@ -2,7 +2,7 @@ import { createApp } from 'vue';
 import pinia from '@/stores/index';
 import App from './App.vue';
 import router from './router';
-import { i18n } from '@/i18n/index';
+import { i18n } from '@/i18n';
 import other from '@/utils/other';
 
 import ElementPlus from 'element-plus';
@@ -10,10 +10,10 @@ import 'element-plus/dist/index.css';
 import '@/theme/index.scss';
 import mitt from 'mitt';
 //改默认英文为中文
-import locale from 'element-plus/lib/locale/lang/en'
+// import locale from 'element-plus/lib/locale/lang/en'
 
 const app = createApp(App);
-app.use(ElementPlus, { locale });
+// app.use(ElementPlus, { locale });
 
 other.elSvg(app);
 

@@ -1,0 +1,124 @@
+<script setup lang="ts">
+import '@fortawesome/fontawesome-free/css/all.css';
+import router from "@/router";
+import {useRoute} from "vue-router";
+
+const route = useRoute();
+const rating: number = parseInt(route.query.score);
+
+const text = '测评到此结束，感谢您的参与！';
+const stars = [2, 4, 6, 8, 10];
+
+function backHome(){
+  router.push('/')
+}
+</script>
+
+<template>
+  <div class="main">
+    <button class="back-home" @click="backHome">返回首页</button>
+    <div class="content">
+      <div class="icon"></div>
+      <div class="text">{{ text }}</div>
+      <div class="score">
+        <span class="score-label">评分：</span>
+        <span class="score-text">{{ rating.toString() + '.0' }}</span>
+        <span class="stars" v-for="star in stars" :class="{ 'filled': star <= rating }">
+            <i class="fa fa-star"></i>
+          </span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped lang="scss">
+.main {
+  width: 100%;
+  //height: 100%;
+  height: 100vh;
+  background-image: url("@/assets/bgForAnswer.png");
+  background-size: cover;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  .back-home {
+    width: 112px;
+    height: 40px;
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    border: 0;
+    border-radius: 3px;
+    background: #00a9ce;;
+    cursor: pointer;
+    color: #ffffffe6;
+  }
+
+  .back-home:hover{
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  }
+
+  .content {
+    width: calc(100% - 540px);
+    height: calc(100% - 120px);
+    background: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+
+    .icon {
+      width: 76px;
+      height: 76px;
+      background-image: url("@/assets/check-circle.png");
+    }
+
+    .text {
+      margin: 80px 0;
+      color: #000000;
+      font-size: 18px;
+      font-weight: 500;
+      text-align: left;
+      line-height: 40px;
+    }
+
+    .score {
+      display: flex;
+      align-items: center;
+
+
+      .score-label {
+        color: #000000e6;
+        font-size: 18px;
+        font-weight: 400;
+        text-align: left;
+        line-height: 40px;
+      }
+
+      .score-text {
+        color: #000000e6;
+        font-size: 36px;
+        font-weight: 600;
+        text-align: left;
+        line-height: 44px;
+        margin-right: 16px;
+        min-width: 77px;
+      }
+
+      .stars {
+        cursor: pointer;
+        font-size: 24px;
+        color: #ccc;
+        margin-right: 6px;
+      }
+
+      .filled {
+        color: #00a9ce;;
+      }
+
+    }
+  }
+}
+</style>

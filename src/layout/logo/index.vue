@@ -1,6 +1,6 @@
 <template>
 	<div class="layout-logo">
-		<a href="/"><img :src="Logo" class="logo" /></a>
+		<a href="/"><img :src="Logo" class="logo"  alt="logo"/></a>
 	</div>
 </template>
 
@@ -30,8 +30,8 @@ export default defineComponent({
 	text-align: center;
 	// padding: 32px 0 45px;
 	margin-top: 40px;
-		
-	.logo {
+
+	a {
 		width: 139px;
 		height:41px
 	}

@@ -5,9 +5,9 @@ export const constantRoutes: Array<RouteRecordRaw> = [
 		path: '/',
 		name: '/',
 		component: () => import('@/layout/index.vue'),
-		redirect: '/llm/index',
+		redirect: '/Login',
 		meta: {
-			title: '首页'
+			title: '首页',
 		},
 		children: [
 			{
@@ -30,54 +30,104 @@ export const constantRoutes: Array<RouteRecordRaw> = [
 				},
 			},
 			{
-				path: '/questionnaire',
-				name: 'noPower',
-				component: () => import('@/views/index/questionnaire.vue'),
+				path: '/home',
+				name: 'Home',
+				component: () => import('@/views/home/index.vue'),
 				meta: {
-					title: 'questionnaire',
-					isHide: true,
-				},
+					title: "首页",
+				}
 			},
 			{
-				path: '/transit',
-				name: '/transit',
-				component: () => import('@/views/index/transit.vue'),
+				path: '/initiateEvaluation',
+				name: 'InitiateEvaluation',
+				component: () => import('@/views/initiateEvaluation/index.vue'),
 				meta: {
-					title: 'transit',
-					isHide: true,
-				},
+					title: "发起评测",
+				}
 			},
 			{
-				path: '/llm/:sid?',
-				name: '大语言模型评测',
-				component: () => import('@/views/index/index.vue'),
+				path: '/myAssessment',
+				name: 'MyAssessment',
+				component: () => import('@/views/myAssessment/index.vue'),
 				meta: {
-					title: '大语言模型评测',
-					roles: ['user'],
-					icon: 'DataBoard',
-					isHide: true,
-				},
+					title: "我的测评",
+				}
 			},
+			{
+				path: '/modeComparison',
+				name: 'ModeComparison',
+				component: () => import('@/views/modeComparison/index.vue'),
+				meta: {
+					title: "模型对比",
+					isHide:true,
+				}
+			},
+			{
+				path: '/questionBankManagement',
+				name: 'QuestionBankManagement',
+				component: () => import('@/views/questionBankManagement/index.vue'),
+				meta: {
+					title: "题库管理",
+				}
+			},
+			// {
+			// 	path: '/test',
+			// 	name: 'test',
+			// 	component: () => import('@/views/test/index.vue'),
+			// 	meta: {
+			// 		title: "测试",
+			// 	}
+			// },
 		],
-		
 	},
 	{
-		path: '/answering',
-		name: '评测中',
-		component: () => import('@/views/index/answering.vue'),
+		path: '/evaluateDetail',
+		name: 'EvaluateDetail',
+		component: () => import('@/views/evaluateDetail/index.vue'),
 		meta: {
-			title: '评测中',
-			isHide: true,
-		},
+			title: "评测详情",
+			isHide:true,
+		}
 	},
 	{
-		path: '/evaluatedPage',
-		name: '评测完成',
-		component: () => import('@/views/index/evaluatedPage.vue'),
+		path: '/evaluateEnd',
+		name: 'EvaluateEnd',
+		component: () => import('@/views/evaluateEnd/index.vue'),
 		meta: {
-			title: '评测完成',
-			isHide: true,
-		},
+			title: "评测结束",
+			isHide:true,
+		}
 	},
+	{
+		path: '/Login',
+		name: 'Login',
+		component: () => import('@/views/test/index.vue'),
+		meta: {
+			title: "登录",
+			isHide:true,
+		}
+	}
+
+	//
+	// {
+	// 	path: '/answering',
+	// 	name: '评测中',
+	// 	component: () => import('@/views/index/answering.vue'),
+	// 	meta: {
+	// 		title: '评测中',
+	// 		isHide: true,
+	// 	},
+	// },
+	// {
+	// 	path: '/evaluatedPage',
+	// 	name: '评测完成',
+	// 	component: () => import('@/views/index/evaluatedPage.vue'),
+	// 	meta: {
+	// 		title: '评测完成',
+	// 		isHide: true,
+	// 	},
+	// },
+
+
 
 ];

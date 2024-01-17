@@ -23,14 +23,15 @@ const viteConfig = defineConfig((mode: ConfigEnv) => {
 			include: ['element-plus/lib/locale/lang/zh-cn', 'element-plus/lib/locale/lang/en', 'element-plus/lib/locale/lang/zh-tw'],
 		},
 		server: {
-			host: '0.0.0.0',
+			host: 'lightpaw.com',
 			port: env.VITE_PORT as unknown as number,
 			open: env.VITE_OPEN,
 			hmr: true,
 			proxy: {
 				'/api': {
-					target: 'http://test.skynetyu.oa.com',
+					target: 'http://192.168.110.3:5000',
 					changeOrigin: true,
+					followRedirects: true,
 				},
 			},
 		},
