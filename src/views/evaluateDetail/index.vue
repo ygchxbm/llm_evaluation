@@ -7,13 +7,15 @@ import router from "@/router";
 
 const route = useRoute()
 
-const examId: number = parseInt(route.query.examId);
+const examId: number = parseInt((route.query.examId as string));
 // console.info("examId:", examId)
 const examItem = ref<examItem | null | object>({});
 const questionBankDetail = ref<Question | null | object>({});
 const progressCount = ref<number>(1);
 const progressColor = ref<string>('#47a5bd');
 const percentage = ref<number>(0);
+
+const isShowContent=ref<boolean>(false)
 
 
 const questions = computed(() => {
@@ -56,7 +58,12 @@ async function init() {
       const length = res.questions.length;
       barData.value.nextStepText = Array(length).fill('下一题');
       barData.value.scores = Array(length).fill(0);
-      barData.value.nextStepText[length - 1] = "提交"
+      if (length > 0) {
+        isShowContent.value=true;
+        barData.value.nextStepText[length - 1] = "提交";
+      } else {
+        barData.value.nextStepText.push("提交");
+      }
     }
   }).catch(e => {
     console.info(e)
@@ -89,16 +96,17 @@ async function changeProgressCount(value: number) {
     const timeCost = new Date().getTime() - startTime;
     startTime = new Date().getTime();
     const curAnswerId = aiAnswers.value[progressCount.value - 1].id;
-    await submitScore(curAnswerId, barData.value.scores[progressCount.value - 1], timeCost, remark.value).then(res => {
+    await submitScore(curAnswerId, barData.value.scores[progressCount.value - 1]*2, timeCost, remark.value).then(res => {
       console.info("res:", res)
     }).catch(e => {
       console.info(e)
     })
     if (progressCount.value === questions.value?.length) {
       const sum = barData.value.scores.reduce((val, next) => {
-        return val + next
+        return val + next*2
       }, 0)
-      let averageScore = parseFloat((sum / barData.value.scores.length).toFixed());
+      debugger
+      let averageScore = parseFloat((sum / barData.value.scores.length).toFixed(1));
       await router.push({
         name: "EvaluateEnd",
         query: {
@@ -112,12 +120,12 @@ async function changeProgressCount(value: number) {
   }
 }
 
-function rebuild(){
+function rebuild() {
   init()
-  progressCount.value=1;
+  progressCount.value = 1;
 }
 
-function backHome(){
+function backHome() {
   router.push('/')
 }
 </script>
@@ -132,7 +140,7 @@ function backHome(){
         </div>
         <div class="question-bank-title">{{ (questionBankDetail as Question).name }}</div>
       </div>
-      <div class="main">
+      <div v-if="isShowContent" class="main">
         <div class="one-question">
           <div class="question-title">{{ questions[progressCount - 1]?.question }}</div>
           <span class="question-dimension">{{ questions[progressCount - 1]?.dimension }}</span>
@@ -144,15 +152,17 @@ function backHome(){
         </div>
       </div>
     </div>
-    <div class="bottom-bar">
+    <div v-if="isShowContent" class="bottom-bar">
       <div class="bar-content">
         <el-button class="last-step" @click="changeProgressCount(-1)">上一题</el-button>
         <div class="score">
           <span class="score-label">评分：</span>
-          <span class="score-text">{{ barData.scores[progressCount - 1] }}</span>
-          <span class="stars" v-for="star in stars" :class="{ 'filled': star <= barData.scores[progressCount - 1] }" @click="setRating(star)">
-            <i class="fa fa-star"></i>
-          </span>
+          <span class="score-text">{{ barData.scores[progressCount - 1]*2 }}</span>
+<!--          <span class="stars" v-for="star in stars" :class="{ 'filled': star <= barData.scores[progressCount - 1] }" @click="setRating(star)">-->
+<!--            <i class="fa fa-star"></i>-->
+<!--          </span>-->
+          <el-rate v-model="barData.scores[progressCount - 1]" clearable allow-half size="large" :colors="['#00A9CE','#00A9CE','#00A9CE']"/>
+<!--          <div>{{barData}}</div>-->
         </div>
         <div class="remark">
           <el-input v-model="remark" placeholder="请输入评分备注"/>
@@ -190,8 +200,8 @@ function backHome(){
     color: #ffffffe6;
   }
 
-  .back-home:hover{
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  .back-home:hover {
+    //box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
   }
 
   .content {
@@ -310,8 +320,8 @@ function backHome(){
         //background: #ffffff;
       }
 
-      .el-button:hover{
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      .el-button:hover {
+        //box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
       }
 
       .last-step {
@@ -342,7 +352,11 @@ function backHome(){
           text-align: left;
           line-height: 44px;
           margin-right: 16px;
-          min-width: 77px;
+          min-width: 45px;
+        }
+
+        :deep(.el-rate__icon){
+          font-size: 24px;
         }
 
         .stars {
@@ -383,7 +397,7 @@ function backHome(){
         line-height: 24px;
       }
 
-      .rebuild,.last-step:hover{
+      .rebuild, .last-step:hover {
         background: none;
       }
 

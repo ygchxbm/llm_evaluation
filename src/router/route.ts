@@ -5,7 +5,7 @@ export const constantRoutes: Array<RouteRecordRaw> = [
 		path: '/',
 		name: '/',
 		component: () => import('@/layout/index.vue'),
-		redirect: '/Login',
+		redirect: '/home',
 		meta: {
 			title: '首页',
 		},
@@ -101,7 +101,7 @@ export const constantRoutes: Array<RouteRecordRaw> = [
 	{
 		path: '/Login',
 		name: 'Login',
-		component: () => import('@/views/test/index.vue'),
+		component: () => import('@/views/login/index.vue'),
 		meta: {
 			title: "登录",
 			isHide:true,

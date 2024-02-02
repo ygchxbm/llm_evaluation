@@ -1,10 +1,36 @@
 import request from "@/utils/request";
 
-export async function login(code:string){
+interface UserInfo {
+    id: number;
+    name: string | null
+    email: string;
+
+    [prop: string]: string | number | null
+}
+
+interface LoginData {
+    access_token: string;
+    expires_in: number;
+    userinfo: UserInfo
+}
+
+interface LoginRes {
+    code: number;
+    data: LoginData;
+}
+/*
+* 登录接口
+*/
+export async function login(code: string): Promise<LoginData | null> {
     const formData = new FormData();
     formData.append('code', code);
     formData.append('redirect_uri', 'https://lightpaw.com/Login');
-    return request(`user/login`, {method: 'POST', headers: {'Content-type': 'application/x-www-form-urlencoded; charset=;UTF-8'}, data: formData})
+    const result: LoginRes = await request(`user/login`, {method: 'POST', headers: {'Content-type': 'application/x-www-form-urlencoded; charset=;UTF-8'}, data: formData})
+    if (result.code === 0) {
+        return result.data
+    } else {
+        return null
+    }
 }
 
 //////首页
@@ -31,6 +57,40 @@ export async function questionSetList(): Promise<questionSetItem[]> {
     return questionSetListCache
 }
 
+export interface questionSetItemForAuto{
+    create_user:string;
+    create_user_id:number;
+    created_at:string;
+    deleted_at:string|null;
+    id:number;
+    modify_user:string;
+    modify_user_id:number;
+    name:string;
+    question_set_list:{
+        create_user:string;
+        create_user_id:number;
+        created_at:string;
+        deleted_at:string|null;
+        id:number;
+        modify_user:string;
+        modify_user_id:number;
+        name:string;
+        question_set_set_id:number
+        updated_at:string;
+    }[];
+    updated_at:string;
+}
+
+export async function questionSetListForAuto(): Promise<questionSetItemForAuto[]|null> {
+    const res = await request('question_set_set/list?site=llm_evaluation');
+    if(res){
+        return res.data
+    }else {
+        return null
+    }
+
+}
+
 /**
  * 一个模型的字段
  */
@@ -43,7 +103,9 @@ export interface modelItem {
     //add by hugh
     model_name: string;
     score_detail_question_set: string;
-    scale:number;
+    scale: number;
+    type_id: number;//1为预训练，2为微调
+    question_set_exam_id: string
 }
 
 
@@ -143,17 +205,26 @@ export function deleteQuestions(id: number) {
 
 /**
  * 创建一个评测任务
- * @param questionSetId 题库id
- * @param modelId 模型id
+ * @param questionSetIds 题库id
+ * @param modelIds 模型id
+ * @param type
  * @param deadline
  * @return 评测任务的id
  */
-export async function createExam(questionSetId: number, modelId: number, deadline?: string): Promise<number> {
+export async function createExam(questionSetIds: number[], modelIds: number[],type:number, deadline?: string): Promise<number[]|null> {
     const formData = new URLSearchParams()
-    formData.append('set_id', String(questionSetId));
-    formData.append('llm_model_id', String(modelId));
+    formData.append('set_ids',JSON.stringify(questionSetIds));
+    formData.append('llm_model_ids',JSON.stringify(modelIds));
+    formData.append('type', String(type));
     const res = await request(`exam/add?site=llm_evaluation`, {method: 'POST', headers: {'Content-type': 'application/x-www-form-urlencoded; charset=;UTF-8'}, data: formData});
-    return res.data.id as unknown as number;
+    if(res.code===0){
+        return res.data.map((item:any) => {
+            return item.id
+        });
+    }else{
+        return null
+    }
+
 }
 
 /*
@@ -170,7 +241,7 @@ export interface examItem {
     question_count: number;
     question_set_id: number;
     questions: Question[];
-
+    llm_model_name:string;
 }
 
 let examItemCache: examItem | null = null
@@ -220,11 +291,36 @@ interface examListOption {
     created_time_max?: number
 }
 
+export interface ExamListItem {
+    id: number;
+    llm_model_id: number
+    create_user_id: number;
+    create_user: string;
+    created_at: string;
+    deadline: any;
+    deleted_at: any
+    question_count: number;
+    question_set_id: number;
+    submit_count: number;
+    submit_score: number;
+    updated_at: string
+}
+
+interface ExamListData {
+    items: ExamListItem[],
+    total: number
+}
+
 /*
 * 获取评测任务列表
 */
-export async function examList(option: examListOption) {
-    return request(`exam/list?site=llm_evaluation&page_num=${option?.page_num}&page_size=${option?.page_size}&llm_model_id=${option?.llm_model_id}&create_user_id=${option?.create_user_id}&created_time_min=${option?.created_time_min}&created_time_max=${option?.created_time_max}`)
+export async function examList(option: examListOption): Promise<ExamListData | null> {
+    const res = await request(`exam/list?site=llm_evaluation&page_num=${option?.page_num}&page_size=${option?.page_size}&llm_model_id=${option?.llm_model_id}&create_user_id=${option?.create_user_id}&created_time_min=${option?.created_time_min}&created_time_max=${option?.created_time_max}`)
+    if (res.code !== 0) {
+        return null
+    } else {
+        return res.data
+    }
 }
 
 /**
@@ -258,6 +354,7 @@ export interface answerDetailItem {
     submit_time: string;
     submit_timecost: number;
     submit_user: string;
+    submit_result: number;//0为没分数，1为正确，-1为错误
 }
 
 export interface modelGrade {

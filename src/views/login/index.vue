@@ -3,20 +3,25 @@ import {login} from "@/api";
 import {onMounted, ref} from "vue";
 import router from "@/router";
 
+
+interface StoredData{
+  expiration:number;
+  value:string;
+}
 const isLoginBtn = ref(true);
 const url = 'https://oasisdev.qq.com/oauth2/auth?client_id=CO7GBRGDJHBBDBMTCOT6CBGR25M&redirect_uri=https://lightpaw.com/Login&response_type=code&scope=openid+offline&state=Hy%2Bsb%2BWUGK0X50yBYf7FVzBhEZTMBDaPVXzqelHZUdY%3D'
 
 const headerName = "Authorization";
 onMounted(() => {
-  let storedData = localStorage.getItem(headerName);
+  let storedDataJson:string|null = localStorage.getItem(headerName);
   // localStorage.removeItem(headerName);
-  if (storedData) {
-    storedData = JSON.parse(storedData);
+  if (storedDataJson) {
+    const storedData:StoredData = JSON.parse(storedDataJson);
     const currentTime = new Date().getTime();
     if (currentTime > storedData.expiration * 1000) {
       // 数据已过期，清除
       localStorage.removeItem(headerName);
-      storedData = null;
+      storedDataJson = null;
       verify()
     } else {
       routeToLogin()
@@ -30,11 +35,12 @@ function verify() {
   const newUrl = document.URL;
   if (newUrl.includes('code=') && newUrl.includes('scope')) {
     const code: string = newUrl.split('code=')[1].split('&scope')[0];
+    debugger
     login(code).then(res => {
-      if (res.code === 0) {
-        const headerValue = `Bearer ${res.data.access_token}`;
-        const expiration: number = res.data.expires_in;
-        localStorage.setItem(headerName, JSON.stringify({value: headerValue, expiration: expiration}));
+      if(res){
+        const {access_token,expires_in}=res;
+        const headerValue = `Bearer ${access_token}`;
+        localStorage.setItem(headerName, JSON.stringify({value: headerValue, expiration: expires_in}));
         isLoginBtn.value = false;
         routeToLogin()
       }

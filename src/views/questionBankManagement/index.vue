@@ -20,10 +20,10 @@ const endQuestionBankId = computed(() => {
 onMounted(init)
 
 async function changeQuestionItem(id: number) {
-  console.info("id:", id)
+  // console.info("id:", id)
   selectedQuestionBankId.value = id
   await questionSetDetail(id).then(res => {
-    console.info("res:", res)
+    // console.info("res:", res)
     selectedQuestionBank.value = res;
   }).catch(e => {
     console.info("e:", e)
@@ -156,17 +156,6 @@ function openCreateDialog() {
                   align-center
                   @close="openToLoadDialog"
               >
-                <!--                <div class="sel">-->
-                <!--                  <label>题库选择</label>-->
-                <!--                  <el-select v-model="toLoadModelId" class="m-2" placeholder="请选择题库">-->
-                <!--                    <el-option-->
-                <!--                        v-for="(id,name) in modeNameList"-->
-                <!--                        :key="id"-->
-                <!--                        :label="id"-->
-                <!--                        :value="name"-->
-                <!--                    />-->
-                <!--                  </el-select>-->
-                <!--                </div>-->
                 <div class="file">
                   <div class="upload">
                     <div class="text">{{ (toLoadFile as File).name }}</div>
@@ -196,7 +185,7 @@ function openCreateDialog() {
         <ul class="question-list">
           <li class="question" v-for="item in (selectedQuestionBank as Question).questions">
             <div class="question-title">{{ item.question }}</div>
-            <span class="question-style">{{ item.dimension }}</span>
+            <span class="question-style">{{ item.dimension || '无' }}</span>
             <div class="question-answer">{{ item.answer }}</div>
           </li>
         </ul>
@@ -228,6 +217,7 @@ function openCreateDialog() {
   </div>
 </template>
 
+<!--suppress SpellCheckingInspection -->
 <style scoped lang="scss">
 ::-webkit-scrollbar-track-piece {
   background-color: #dddee0;
@@ -243,13 +233,15 @@ function openCreateDialog() {
     height: calc(100% - 20px);
     margin: 20px 28px 0 20px;
     display: flex;
-    //justify-content: space-between;
 
     .aside {
       width: 140px;
 
       .question-name-list {
         margin-top: 28px;
+        padding-bottom: 40px;
+        height: 100%;
+        overflow-y: scroll;
 
         .question-name-base {
           width: 140px;
@@ -564,7 +556,6 @@ function openCreateDialog() {
         background: #ffffff;
 
         .el-dialog__header {
-          //margin-top: 15px;
           margin: 30px auto;
           padding: 0;
           color: #000000E6;

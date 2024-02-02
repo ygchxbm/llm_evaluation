@@ -2,14 +2,27 @@
 import '@fortawesome/fontawesome-free/css/all.css';
 import router from "@/router";
 import {useRoute} from "vue-router";
+import {computed} from "vue";
 
 const route = useRoute();
-const rating: number = parseInt(route.query.score);
+const tempRating: string = (route.query.score as string);
+
+const score = computed(() => {
+  if (tempRating.includes('.')) {
+    const length = tempRating.split('.')[1].length;
+    return parseFloat(tempRating).toFixed(length);
+  } else {
+    return parseFloat(tempRating) / 2 + '.0'
+  }
+})
+
+const rating=computed(()=>{
+  return parseInt(score.value)/2;
+})
 
 const text = '测评到此结束，感谢您的参与！';
-const stars = [2, 4, 6, 8, 10];
 
-function backHome(){
+function backHome() {
   router.push('/')
 }
 </script>
@@ -22,10 +35,8 @@ function backHome(){
       <div class="text">{{ text }}</div>
       <div class="score">
         <span class="score-label">评分：</span>
-        <span class="score-text">{{ rating.toString() + '.0' }}</span>
-        <span class="stars" v-for="star in stars" :class="{ 'filled': star <= rating }">
-            <i class="fa fa-star"></i>
-          </span>
+        <span class="score-text">{{ score }}</span>
+        <el-rate v-model="rating" clearable allow-half size="large" :colors="['#00A9CE','#00A9CE','#00A9CE']"/>
       </div>
     </div>
   </div>
@@ -55,9 +66,9 @@ function backHome(){
     color: #ffffffe6;
   }
 
-  .back-home:hover{
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-  }
+  //.back-home:hover{
+  //  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  //}
 
   .content {
     width: calc(100% - 540px);
@@ -120,5 +131,9 @@ function backHome(){
 
     }
   }
+}
+
+:deep(.el-rate__icon) {
+  font-size: 30px;
 }
 </style>

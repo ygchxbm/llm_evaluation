@@ -1,186 +1,331 @@
 <script lang="ts" setup>
 
-import {ref, computed, onMounted, reactive} from "vue";
+import {ref, computed, onMounted} from "vue";
 import router from "@/router/index.js";
 import {ElTable} from "element-plus";
-import {questionSetList, modelList, modelItem} from "@/api"
+import {questionSetList, modelList, modelItem, questionSetItem} from "@/api"
+import {ElCollapseTransition} from 'element-plus'
+// fade/zoom
+// import 'element-plus/lib/theme-chalk/base.css'
 
-const modelSizeData = [
-  "小于1B", "1B～3B", "3B-7B", "7B-13B", "13B-40B", "40B以上"
-]
-
-const modelSizeDataMap = {
-  "小于1B": [0, 1],
-  "1B～3B": [1, 3],
-  "3B-7B": [3, 7],
-  "7B-13B": [7, 13],
-  "13B-40B": [13, 40],
-  "40B以上": [40, Infinity],
+interface MyData {
+  allQueBanks: AllQueBanks;
+  allModes: AllModes;
+  allScores: AllScores;
 }
 
-const modelTypeData = [
-  "预训练", "微调",
-]
+interface AllQueBanks {
+  [prop: string]: QueBank;
+}
 
-const checkEvaluationMode = ref<string[]>([]);
-const checkModelSize = ref(["小于1B"]);
-const checkModelTypeData = ref(['Option1']);
+interface QueBank {
+  name: string;
+  score?: number;
+}
 
-// let questionBankNames: {} = reactive({});
-// let questionScores: {} = reactive({});
-let modeNameList: string[] = reactive([]);
-const modeDatalist = ref<modelItem[]>([]);
+interface AllModes {
+  [prop: number]: Mode;
+}
 
+interface Mode {
+  name: string;
+}
 
-const tableData = computed(() => {
-  if (modeDatalist.value.length > 0) {
-    const questionScores = {}
-    // console.info("checkModelSize:", checkModelSize.value)
-    const ranges = checkModelSize.value.map(sizeText => {
-      return Reflect.get(modelSizeDataMap,sizeText)
+interface AllScores {
+  [prop: number]: ModeWithScore
+}
+
+interface ModeWithScore {
+  name: string;
+  scale: number;
+  type: number;
+  qusBanks: AllQueBanks;
+}
+
+const data = ref<MyData>()
+
+const multipleTableRef = ref<InstanceType<typeof ElTable>>()
+const multipleSelection = ref<Row[]>([])
+
+const checkEvaluationTask = ref<{[prop:number]:string}[]>([]);
+
+const isFlagTaskBtn = ref(false);
+const checkEvaluationTaskOption = computed<{[prop:number]:{name:string}}>(() => {
+  const result = {};
+  if(checkEvaluationTask.value&&checkEvaluationTask.value.length>0){
+    checkEvaluationTask.value.forEach(item => {
+      const id: number = parseInt(Object.keys(item)[0]);
+      const name = item[id];
+      Reflect.set(result, id, {name})
     })
-    // console.info("ranges:", ranges)
-    // const res=isRange(ranges,1024)
-    // console.info("res:", res)
-    modeNameList = [];
-    modeDatalist.value.filter((item => {
-      return isRange(ranges, item.scale)
-    })).forEach(item => {
-      modeNameList.push(item.model_name);
-      const tmpObj = JSON.parse(item.score_detail_question_set);
-      if (tmpObj) {
-        const modeName = Reflect.get(item, 'model_name');
-        Reflect.set(questionScores, modeName, {});
-        const questionBankIds = Reflect.ownKeys(questionBankNames.value);
-        questionBankIds.forEach(questionBankId => {
-          let questionBankScore = Reflect.get(tmpObj, questionBankId);
-          const questionBankName = Reflect.get(questionBankNames.value, questionBankId);
-          if (typeof questionBankScore === "number") {
-            questionBankScore = parseFloat(questionBankScore.toFixed(4))
-          }
-          Reflect.set(Reflect.get(questionScores, modeName), questionBankName, questionBankScore);
-          // questionScores[modeName].push(obj)
-        })
-      }
-    })
-
-    // console.info("result:", result)
-    // return result
-    const tableData: object[] = [];
-
-    modeNameList.forEach(modeName => {
-      const obj = {};
-      tableHeads.value.forEach((questionBankName, index) => {
-        let value;
-        if (index === 0) {
-          value = modeName
-        } else if (Reflect.get(questionScores, modeName)) {
-          value = Reflect.get(Reflect.get(questionScores, modeName), questionBankName)
-        }
-        Reflect.set(obj, questionBankName, value);
-      })
-      tableData.push(obj);
-    })
-    return tableData
   }
+  return result
+})
 
-
-  function isRange(ranges: [][], num: number): boolean {
-    let res = false;
-    const rangesLength = ranges.length;
-    for (let i = 0; i < rangesLength; i++) {
-      const range: number[] = ranges[i];
-      const min: number = range[0];
-      const max: number = range[1];
-      const tempNum: number = num / 1024;
-      if (min < tempNum && tempNum <= max) {
-        res = true;
-        break
-      }
-    }
-    return res
+const taskText = computed(() => {
+  if (isFlagTaskBtn.value) {
+    return '收起任务'
+  } else {
+    return '展开任务'
   }
 })
 
-onMounted(async () => {
-  await questionSetList().then(res => {
-    // console.info("names:", res)
-    res.forEach(item => {
-      const questionBankId = item.id;
-      const questionBankName: string = item.name;
-      Reflect.set(questionBankNames.value, questionBankId, questionBankName)
+function changeTaskBtn() {
+  isFlagTaskBtn.value = !isFlagTaskBtn.value;
+}
+
+
+const modelSizeData = {
+  '0,1': "小于1B",
+  '1,3': "1B～3B",
+  '3,7': "3B-7B",
+  '7,13': "7B-13B",
+  '13,40': "13B-40B",
+  '40,Infinity': "40B以上",
+}
+const checkModelSize = ref<string[]>(['0,1']);
+const modelTypeData = {
+  '1': "预训练",
+  '2': "微调"
+}
+const checkModelType = ref<string[]>(['1']);
+const defaultTableHead = {'0': 'Model'};
+
+const tableHeads = computed(() => {
+  let result = Object.assign({}, defaultTableHead);
+  if (checkEvaluationTask.value.length > 0) {
+    checkEvaluationTask.value.forEach(item => {
+      result = Object.assign(result, item)
     })
-    console.info("questionBankNames:", questionBankNames.value)
+  }
+  return result
+})
+
+interface Row {
+  [prop: string]: number | string;
+}
+
+const tableData = computed<Row[]>(() => {
+  const result = []
+  if (data.value) {
+    const {allModes, allScores} = data.value;
+    // console.info("allScores:", allScores)
+    // console.info("allModes:", allModes)
+    for (const modeId in allModes) {
+      const modeWithScore = allScores[modeId];
+      const mode = allModes[modeId];
+      if (mode) {
+        const row: Row | {} = {};
+        for (const key in tableHeads.value) {
+          if (key === '0') {
+            Reflect.set(row, key, mode.name)
+          } else {
+            let score
+            if (modeWithScore && isRange(checkModelSize.value, modeWithScore.scale) && checkModelType.value.includes(modeWithScore.type.toString())) {
+              score = modeWithScore?.qusBanks[key]?.score;
+              if (typeof score === 'number') {
+                score = parseFloat(score.toFixed(4));
+              }
+            } else {
+              score = undefined
+            }
+            Reflect.set(row, key, score)
+          }
+        }
+        result.push(row)
+      }
+    }
+  }
+  // console.info("res:", result)
+  return result
+})
+
+onMounted(async () => {
+  let quesBank: questionSetItem[] | null = null, modeList: modelItem[] | null = null;
+  await questionSetList().then(res => {
+    quesBank = res;
   }).catch(e => {
     console.info("e:", e)
   })
 
   await modelList().then(res => {
-    console.info("scores:", res)
-    modeDatalist.value = res;
+    modeList = res;
+    // console.info("scores:", res)
   }).catch(e => {
     console.info(e)
   });
-  Object.values(questionBankNames.value).slice(0, 5).forEach((questionBankName) => {
-    checkEvaluationMode.value.push(questionBankName)
-  });
 
+  if (quesBank && modeList) {
+    const allQueBanks: AllQueBanks = {};
+    (quesBank as questionSetItem[])?.forEach(item => {
+      const queBank: QueBank = {
+        name: item.name,
+      };
+      Reflect.set(allQueBanks, item.id, queBank);
+      if (checkEvaluationTask.value.length < 5) {
+        const obj: {
+          [prop: number]: string
+        } = {};
+        obj[item.id] = queBank.name
+        checkEvaluationTask.value.push(obj)
+      }
+    })
+    // console.info("allQueBank:", allQueBanks);
+    const allModes: AllModes = {};
+    const allScores: AllScores = {};
+    (modeList as modelItem[])?.forEach(item => {
+      const mode = {
+        name: item.model_name,
+      }
+      if (item.score_detail_question_set) {
+        const queBankScore = JSON.parse(item.score_detail_question_set);
+        const qusBanks: AllQueBanks = {};
+        for (const queBankId in queBankScore) {
+          const score = Reflect.get(queBankScore, queBankId);
+          const queBankName = Reflect.get(allQueBanks, queBankId);
+          const queBank = {
+            name: queBankName,
+            score
+          }
+          Reflect.set(qusBanks, queBankId, queBank)
+        }
+        const score = {
+          name: item.model_name,
+          scale: item.scale,
+          type: item.type_id,
+          qusBanks
+        }
+        Reflect.set(allScores, item.id, score)
+      }
+      Reflect.set(allModes, item.id, mode)
+      Reflect.set(modeNameMap, mode.name, item.id)
+    })
+
+    data.value = {
+      allScores,
+      allModes,
+      allQueBanks
+    }
+  }
 })
 
-
-function myChange() {
-  // console.info("checkEvaluationMode.value:", checkEvaluationMode.value)
+interface ModeNameMap {
+  [prop: string]: number
 }
+
+const modeNameMap: ModeNameMap = {}
+
+interface EvaluatedAboutId {
+  modeId: number;
+  queBankIdList: number[];
+}
+
+let compareData: EvaluatedAboutId[] = [];
 
 function startComparing() {
-  router.push({name: "ModeComparison"})
+  if (!isDisabled.value) {
+    router.push({
+      name: "ModeComparison",
+      query: {
+        compareData: JSON.stringify(compareData)
+      }
+    })
+  }
 }
 
-interface User {
-  date: string
-  name: string
-  address: string
-}
+const isDisabled = ref<boolean>(true);
+const compareBtn = ref<HTMLElement | null>(null)
 
-interface QuestionBankNames{
-  [propName:number]:string
-}
+function handleSelectionChange(val: Row[]) {
+  //勾选两个及以上，显示对比按钮
+  if (compareBtn.value) {
+    if (val.length >= 2 && val.length <= 5) {
+      const myStyle: CSSStyleDeclaration = compareBtn.value.style;
+      myStyle.cursor = 'pointer';
+      myStyle.opacity = '1';
+      isDisabled.value = false;
+    } else {
+      const myStyle: CSSStyleDeclaration = compareBtn.value.style;
+      myStyle.cursor = 'not-allowed';
+      myStyle.opacity = '0.5';
+      isDisabled.value = true;
+    }
+  }
 
-const questionBankNames=ref<QuestionBankNames>({});
-const multipleTableRef = ref<InstanceType<typeof ElTable>>()
-const multipleSelection = ref<User[]>([])
 
-
-const tableHeads = computed(() => {
-  return ['Model'].concat(checkEvaluationMode.value)
-})
-const handleSelectionChange = (val: User[]) => {
+  compareData = [];
+  val.forEach(rowData => {
+    let modeId: number = 0;
+    const queBankIdList: number[] = []
+    for (const modeNameKey in rowData) {
+      const item: number | string = rowData[modeNameKey];
+      if (modeNameKey === '0') {
+        modeId = modeNameMap[item as string]
+      } else if (item || item === 0) {
+        queBankIdList.push(parseInt(modeNameKey));
+      }
+    }
+    if (modeId || modeId === 0) {
+      const obj: EvaluatedAboutId = {
+        modeId,
+        queBankIdList
+      }
+      compareData.push(obj);
+    }
+  })
   multipleSelection.value = val
 }
+
+function isRange(ranges: string[], num: number): boolean {
+  let res = false;
+  const rangesLength = ranges.length;
+  for (let i = 0; i < rangesLength; i++) {
+    const range: string[] = ranges[i].split(',');
+    const min: number = parseInt(range[0]);
+    const max: number = parseInt(range[1]);
+    const tempNum: number = num / 1024;
+    if (min < tempNum && tempNum <= max) {
+      res = true;
+      break
+    }
+  }
+  return res
+}
+
+
 </script>
 
 <template>
   <div class="home">
     <div class="content">
       <div class="except-interactive-specification">
+        <!--        <div>{{checkEvaluationTaskAfterFilter}}</div>-->
         <div class="evaluation-model parameter">
           <div class="label">评测任务：</div>
-          <el-checkbox-group class="checkboxes" v-model="checkEvaluationMode" @change="myChange" size="large">
-            <el-checkbox v-for="item in questionBankNames" :label="item" border/>
+          <el-checkbox-group class="checkboxes" v-model="checkEvaluationTask" size="large">
+            <el-checkbox v-for="(queBank,id) in checkEvaluationTaskOption" :label="{[id]:(queBank as QueBank).name}" border>{{ queBank.name }}</el-checkbox>
           </el-checkbox-group>
+          <div class="task-btn" @click="changeTaskBtn">{{ taskText }}</div>
         </div>
+        <el-collapse-transition>
+          <div v-show="isFlagTaskBtn" style="height: 300px" class="collapse">
+            <el-checkbox-group class="checkboxes" v-model="checkEvaluationTask" size="large">
+              <el-checkbox v-for="(queBank,id) in (data as MyData)?.allQueBanks" :label="{[id]:(queBank as QueBank).name}" border>{{ queBank.name }}</el-checkbox>
+            </el-checkbox-group>
+          </div>
+        </el-collapse-transition>
         <div class="model-size parameter">
           <div class="label">模型大小：</div>
-          <el-checkbox-group class="checkboxes" v-model="checkModelSize" @change="myChange" size="large">
-            <el-checkbox v-for="item in modelSizeData" :label="item" border/>
+          <el-checkbox-group class="checkboxes" v-model="checkModelSize" size="large">
+            <el-checkbox v-for="(value,key) in modelSizeData" :label="key" border>{{ value }}</el-checkbox>
           </el-checkbox-group>
         </div>
         <div class="model-type parameter">
           <div class="label">模型类别：</div>
-          <el-checkbox-group class="checkboxes" v-model="checkModelTypeData" @change="myChange" size="large">
-            <el-checkbox v-for="item in modelTypeData" :label="item" border/>
+          <el-checkbox-group class="checkboxes" v-model="checkModelType" size="large">
+            <el-checkbox v-for="(value,key) in modelTypeData" :label="key" border>{{ value }}</el-checkbox>
           </el-checkbox-group>
-          <button class="compare-btn" @click="startComparing">对比</button>
+          <button class="compare-btn" ref="compareBtn" @click="startComparing">对比</button>
         </div>
         <div class="mode-table">
           <el-table
@@ -188,14 +333,14 @@ const handleSelectionChange = (val: User[]) => {
               height="414"
               ref="multipleTableRef"
               :data="tableData"
-              @selection-change="handleSelectionChange"
+              @select="handleSelectionChange"
               table-layout="auto"
               border
               fit
               scrollbar-always-on
           >
             <el-table-column type="selection" width="40"/>
-            <el-table-column v-for="item in tableHeads" :prop="item" :label="item"/>
+            <el-table-column v-for="(name,id) in tableHeads" :prop="id.toString()" :label="name"></el-table-column>
           </el-table>
         </div>
       </div>
@@ -232,25 +377,19 @@ const handleSelectionChange = (val: User[]) => {
       display: flex;
       flex-direction: column;
 
-      .parameter {
-        margin: 0 10px;
-        display: flex;
-        align-items: baseline;
-
-
-        .label {
-          min-width: 80px;
-          font-size: 14px;
-        }
+      .collapse {
+        overflow-y: scroll;
+        background: #f8f8f8;
+        padding: 20px;
+        margin: 10px 120px 10px 115px;
+        box-shadow: 1px 1px 10px 3px #0000001a inset;
 
         .checkboxes {
           display: flex;
           flex-wrap: wrap;
-          margin-left: 15px;
 
           .el-checkbox {
-            margin-right: 10px;
-            margin-bottom: 10px;
+            margin: 5px 0 5px 10px;
             background: linear-gradient(180deg, #FFF 0%, #F8F8F8 100%);
             border-radius: 6px;
             border-color: #E7E7E7FF;
@@ -272,8 +411,66 @@ const handleSelectionChange = (val: User[]) => {
         }
       }
 
+      .parameter {
+        margin: 0 10px;
+        display: flex;
+        align-items: baseline;
+
+
+        .label {
+          min-width: 80px;
+          font-size: 14px;
+        }
+
+        .checkboxes {
+          display: flex;
+          flex-wrap: wrap;
+          margin-left: 15px;
+          border-radius: 10px;
+
+          .el-checkbox {
+            margin: 5px 0 5px 10px;
+            background: linear-gradient(180deg, #FFF 0%, #F8F8F8 100%);
+            border-radius: 6px;
+            border-color: #E7E7E7FF;
+            color: #000000E6;
+          }
+
+          .el-checkbox.is-checked {
+            border-color: #48aacb;
+          }
+
+          :deep(.el-checkbox__input.is-checked .el-checkbox__inner ) {
+            background-color: #48aacb; /* 设置选中状态的背景颜色为红色 */
+            border-color: #48aacb; /* 设置选中状态的边框颜色为红色 */
+          }
+
+          :deep(.el-checkbox__input.is-checked+.el-checkbox__label) {
+            color: #000000E6;
+          }
+        }
+
+
+      }
+
       .evaluation-model {
-      //padding-top: 30px; margin-top: 10px;
+        display: flex;
+
+        .checkboxes{
+          padding-right: 80px;
+        }
+
+        .task-btn {
+          position: absolute;
+          right: 40px;
+          margin-top: 10px;
+          background: #00A9CE;
+          color: #f8f8f8;
+          padding: 5px 12px;
+          border-radius: 3px;
+          cursor: pointer;
+          z-index: 100;
+        }
       }
 
       .model-size {
@@ -288,9 +485,7 @@ const handleSelectionChange = (val: User[]) => {
           width: 80px;
           height: 40px;
           border-radius: 3px;
-          background: #00A9CEFF;
           border: 0;
-          color: #ffffffe6;
           text-align: center;
           font-size: 16px;
           font-style: normal;
@@ -298,7 +493,10 @@ const handleSelectionChange = (val: User[]) => {
           line-height: 24px;
           position: absolute;
           right: -10px;
-          cursor: pointer;
+          background: #00A9CEFF;
+          color: #ffffffe6;
+          opacity: 0.5;
+          cursor: not-allowed;
         }
       }
 
@@ -389,4 +587,10 @@ const handleSelectionChange = (val: User[]) => {
     }
   }
 }
+
+::-webkit-scrollbar-track-piece {
+  background-color: #dddee0;
+}
+
+
 </style>

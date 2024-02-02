@@ -1,86 +1,153 @@
 <script setup lang="ts">
 import {computed, onMounted, ref} from "vue";
 import {ElTable} from "element-plus";
-import {modelList, questionSetItem, questionSetList, examList} from "@/api";
+import type {TableColumnCtx} from 'element-plus'
+import {modelList, questionSetItem, questionSetList, examList, ExamListItem, questionSetListForAuto, questionSetItemForAuto} from "@/api";
 
-const selectModelData = [
-  {
-    value: 'ERNIE-Bot',
-    label: 'ERNIE-Bot',
-  },
-  {
-    value: 'Option2',
-    label: 'Option2',
-  }
-]
-
-
-const random = Math.random;
-
-//
-const questionBankList = ref<questionSetItem[]>([]);
-const questionBankNames = ref<object>({});//{questionBankId:questionBankName}
-let modeNameList = ref<object>({});//{modeId:modeName}
-let questionScores = ref<object>({});//{modeId:{questionBankName:score}}
-const examDataList = ref<[]>([]);
-
+//所有发起人
 const initiatorOptions = ref<string[]>([]);
+//已选择的发起人
 const selectedInitiator = ref<string>("");
-
+//已选择的时间
+const selectedTime = ref<string>();
+//所有的modeName
 const modeOptions = ref<string[]>([]);
+//已选择的模型name
 const selectedMode = ref<string>("");
 
-const myTableData = computed(() => {
-  const modeLength = examDataList.value.length;
-  if (modeLength === 0) {
-    return []
-  } else {
-    let i = 0;
-    const result: any[] = [];
-    examDataList.value.forEach((item, i) => {
-      const obj = {};
-      tableHeaders.value.forEach((headerText, j) => {
-        if (j === 0) {
-          // console.info("item.create_user:", item.create_user)
-          obj[headerText] = item.create_user_id + '_' + item.create_user;
-          if (!initiatorOptions.value.includes(obj[headerText])) {
-            initiatorOptions.value.push(obj[headerText]);
-          }
-        } else if (j === 1) {
-          obj[headerText] = item.updated_at;
-        } else if (j === 2) {
-          obj[headerText] = modeNameList.value[item.llm_model_id];
-          if (!modeOptions.value.includes(obj[headerText])) {
-            modeOptions.value.push(obj[headerText]);
-          }
-        } else if (j === 3) {
-          obj[headerText] = questionBankNames.value[item.question_set_id];
-        } else if (j === 4) {
-          obj[headerText] = item.submit_score;
-        }
-      })
+const questionBankList = ref<questionSetItem[]>([]);
+const questionBankNames = ref<{
+  [prop: number]: string
+}>({});//{questionBankId:questionBankName}
+let modeNameList = ref<{
+  [prop: number]: string
+}>({});//{modeId:modeName}
+let questionScores = ref<object>({});//{modeId:{questionBankName:score}}
+const examDataList = ref<ExamListItem[]>([]);
+
+//月份英文缩写与月份数组的映射表
+const monthMap: {
+  [prop: string]: string
+} = {
+  Jan: '01',
+  Feb: '02',
+  Mar: '03',
+  Apr: '04',
+  May: '05',
+  Jun: '06',
+  Jul: '07',
+  Aug: '08',
+  Sept: '09',
+  Oct: '10',
+  Nov: '11',
+  Dec: '12'
+}
+
+//表头
+const tableHeaders = ['发起人', '评测时间', '模型名称', '题库', '分数'];
+
+interface Row {
+  "发起人": string;
+  "评测时间": string;
+  "模型名称": string;
+  "题库": string | undefined;
+  "分数": number;
+  id: number
+}
+
+const tableData = computed(() => {
+  const result: Row[] = []
+  if (examDataList.value && examDataList.value.length > 0) {
+    examDataList.value.forEach(item => {
+      const initiatorName = item.create_user_id + '_' + item.create_user;
+      const modeName = modeNameList.value[item.llm_model_id];
+      const obj: Row = {
+        '发起人': initiatorName,
+        '评测时间': parseTime(item.updated_at),
+        '模型名称': modeName,
+        '题库': questionBankNames.value[item.question_set_id],
+        '分数': item.submit_score,
+        id: item.question_set_id
+      };
+      if (!initiatorOptions.value.includes(initiatorName)) {
+        initiatorOptions.value.push(initiatorName)
+      }
+      if (!modeOptions.value.includes(modeName)) {
+        modeOptions.value.push(modeName)
+      }
       result.push(obj)
     })
-    return filterData(result).reverse()
   }
+  const tempResult = filterData(result).reverse();
+  // debugger
+  let i = 0;
+  const length = tempResult.length;
+  if (length > 0) {
+    let activeIndex = 0;
+    const startIndexObj:{[props:number]:number}={}
+     mergeData.value= {
+      startIndexObj:startIndexObj,
+      mergeIndex:[],
+    };
+    let mergeLength = 1;
+    while (i < length - 1) {
+      const questionId = tempResult[i].id;
+      const queGroupId = Reflect.get(questionGroupMap.value, questionId);
+      const questionId2 = tempResult[i + 1].id;
+      const queGroupId2 = Reflect.get(questionGroupMap.value, questionId2);
+      if (queGroupId && queGroupId2 && queGroupId === queGroupId2) {
+        mergeLength++
+        if (mergeLength === 2) {
+          activeIndex = i;
+        }
+        Reflect.set(startIndexObj, activeIndex, mergeLength)
+      } else {
+        mergeLength = 1;
+      }
+      i++
+    }
+
+    for (const index in startIndexObj) {
+      const length = startIndexObj[index];
+      for (let i = 0; i < length; i++) {
+        if (i !== 0) {
+          mergeData.value.mergeIndex.push(parseInt(index) + i)
+        }
+      }
+    }
+  }
+
+
+
+  // console.info("mergeData:", mergeData.value)
+  return tempResult
 })
 
+//解析时间格式
+function parseTime(timeStr: string): string {
+  const items = timeStr.split(' ');
+  const year = items[3];
+  const month = monthMap[items[2]];
+  const day = items[1];
+  return year + '-' + month + '-' + day;
+}
+
+const questionBankListForAuto = ref<questionSetItemForAuto[]>([]);
+
 onMounted(async () => {
+  // debugger
   await questionSetList().then(res => {
-    // console.info("names:", res)
     questionBankList.value = res;
     res.forEach(item => {
       const questionBankId = item.id;
       const questionBankName: string = item.name;
       Reflect.set(questionBankNames.value, questionBankId, questionBankName)
     })
-    // console.info("questionBankNames.value:", questionBankNames.value)
   }).catch(e => {
-    console.info("e:", e)
+    console.info(e)
   })
 
   await modelList().then(res => {
-    // console.info("scores:", res)
     res.forEach(item => {
       const modeId = item.id;
       const modeName = item.model_name;
@@ -96,30 +163,85 @@ onMounted(async () => {
         Reflect.set(questionScores.value, modeName, obj);
       }
     })
-    // console.info("questionBankNames:", questionBankNames.value)
-    console.info("modeNameList:", modeNameList.value)
-    // console.info("questionScores:", questionScores.value)
   }).catch(e => {
     console.info(e)
   });
 
+  await questionSetListForAuto().then(res => {
+    if (res) {
+      debugger
+      questionBankListForAuto.value = res;
+    }
+  })
+
+  if (questionBankListForAuto.value && questionBankListForAuto.value.length > 0) {
+    questionBankListForAuto.value.forEach(questionGroup => {
+      const queGroupId = questionGroup.id;
+      const questions = questionGroup.question_set_list;
+      if (questions && questions.length > 0) {
+        questions.forEach(question => {
+          const questionId = question.id;
+          Reflect.set(questionGroupMap.value, questionId, queGroupId);
+        })
+      }
+    })
+
+    console.info("questionGroupMap:", questionGroupMap.value)
+  }
+
   await examList({page_size: 9999, create_user_id: 4}).then(res => {
-    examDataList.value = res.data.items;
-    console.info("res:", res)
-  })
+    if (res) {
+      debugger
+      examDataList.value = res.items
+    }
+  }).catch(e => {
+    console.info(e)
+  });
 })
 
-const tableHeaders = computed(() => {
-  // return ['发起人', '评测时间', 'Model'].concat(Object.values(questionBankNames.value))
-  return ['发起人', '评测时间', '模型', '题库', '分数']
-})
-
-function filterData(data: object[]) {
-  // if (selectedInitiator.value) {
+function filterData(data: Row[]) {
   return data.filter(item => {
-    return (item['发起人'] === selectedInitiator.value || !selectedInitiator.value)&&(item['模型'] === selectedMode.value || !selectedMode.value)
+    return (item['发起人'] === selectedInitiator.value || !selectedInitiator.value) && (item['模型名称'] === selectedMode.value || !selectedMode.value) && (item['评测时间'] === selectedTime.value || !selectedTime.value)
   })
 
+}
+
+const questionGroupMap = ref({})
+const mergeData = ref<{startIndexObj:{[props:number]:number};mergeIndex:number[]} | undefined>(undefined);
+
+interface User {
+  id: string
+  name: string
+  amount1: string
+  amount2: string
+  amount3: number
+}
+
+interface SpanMethodProps {
+  row: User
+  column: TableColumnCtx<User>
+  rowIndex: number
+  columnIndex: number
+}
+
+function spanMethod({rowIndex, columnIndex,}: SpanMethodProps) {
+  if (mergeData.value) {
+    // debugger
+    if (mergeData.value.mergeIndex.includes(rowIndex) && (columnIndex === 0||columnIndex === 1||columnIndex === 2)) {
+      return {
+        rowspan: 0,
+        colspan: 0,
+      }
+    }
+
+    const length=mergeData.value.startIndexObj[rowIndex];
+    if (length && (columnIndex === 0|| columnIndex === 1||columnIndex === 2)) {
+      return {
+        rowspan: length,
+        colspan: 1,
+      }
+    }
+  }
 }
 
 </script>
@@ -141,14 +263,16 @@ function filterData(data: object[]) {
         </div>
         <div class="evaluation-time">
           <span class="label">评测时间</span>
-          <el-select v-model="selectedMode" class="m-2" placeholder="请选择" size="small">
-            <el-option
-                v-for="item in selectModelData"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
+          <div class="select-time">
+            <el-date-picker
+                v-model="selectedTime"
+                type="date"
+                placeholder="请选择"
+                value-format="YYYY-MM-DD"
+                size="default"
+                :teleported=false
             />
-          </el-select>
+          </div>
         </div>
         <div class="model-type">
           <span class="label">模型</span>
@@ -162,13 +286,16 @@ function filterData(data: object[]) {
           </el-select>
         </div>
       </div>
+      <!--      <div>{{tableData}}</div>-->
       <div class="mode-table">
         <el-table
             ref="multipleTableRef"
-            :data="myTableData"
+            :data="tableData"
+            :span-method="spanMethod"
             style="width: 100%"
             max-height="1100"
-            border>
+            border
+        >
           <el-table-column v-for="item in tableHeaders" :prop="item" :label="item"/>
         </el-table>
       </div>
@@ -196,6 +323,23 @@ function filterData(data: object[]) {
       margin-top: 10px;
       margin-left: 18px;
       margin-bottom: 24px;
+
+      .evaluation-time {
+        display: flex;
+        align-items: baseline;
+
+        :deep(.el-input__wrapper) {
+          box-shadow: 0 0 0 1px #00A9CE inset;
+        }
+
+        :deep(.el-date-table td.today .el-date-table-cell__text) {
+          color: #64ceff;
+        }
+
+        :deep(.el-date-table td.current .el-date-table-cell__text) {
+          background: #64ceff;
+        }
+      }
 
       .label {
         color: #00000080;

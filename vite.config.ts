@@ -23,7 +23,7 @@ const viteConfig = defineConfig((mode: ConfigEnv) => {
 			include: ['element-plus/lib/locale/lang/zh-cn', 'element-plus/lib/locale/lang/en', 'element-plus/lib/locale/lang/zh-tw'],
 		},
 		server: {
-			host: 'lightpaw.com',
+			host: '0.0.0.0',
 			port: env.VITE_PORT as unknown as number,
 			open: env.VITE_OPEN,
 			hmr: true,

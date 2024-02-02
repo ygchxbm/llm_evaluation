@@ -1,6 +1,7 @@
+// noinspection JSUnresolvedReference
+
 import axios from 'axios';
-import {site} from '../config';
-import router from "@/router";
+import {site} from '@/config';
 
 // 配置新建一个 axios 实例
 const service = axios.create({
@@ -8,7 +9,10 @@ const service = axios.create({
     timeout: 50000,
     headers: {'Content-Type': 'application/json'},
 });
-
+interface StoredData{
+    expiration:number;
+    value:string;
+}
 // 添加请求拦截器
 service.interceptors.request.use(
     (config) => {
@@ -16,10 +20,9 @@ service.interceptors.request.use(
             config.url = config.url + (config.url.includes('?') ? '&' : '?') + `site=${site}`;
         }
 
-        const headerName = "Authorization";
-        let storedDataJson: string | null = localStorage.getItem(headerName);
+        let storedDataJson: string | null = localStorage.getItem("Authorization");
         if (storedDataJson) {
-            const storedData: object = JSON.parse(storedDataJson);
+            const storedData: StoredData = JSON.parse(storedDataJson);
             const currentTime = new Date().getTime();
             if (currentTime < storedData.expiration * 1000) {
                 const Authorization: string = storedData.value;

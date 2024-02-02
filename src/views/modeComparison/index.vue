@@ -1,155 +1,255 @@
-<script setup>
-import {ArrowRight} from '@element-plus/icons-vue'
-import {Search} from '@element-plus/icons-vue'
-import {ref} from "vue";
+<script setup lang="ts">
+import {ArrowRight, Search} from '@element-plus/icons-vue';
+import {computed, onMounted, ref} from "vue";
+import {computedAsync} from '@vueuse/core'
+import {useRoute} from "vue-router";
+import {examDetail, modelList, Question, questionSetDetail, questionSetList} from "@/api";
 
-const input3 = ref("");
-const activeName = ref('first')
-const handleClick = (tab, event) => {
+const route = useRoute();
+
+//路由传递过来的参数
+interface EvaluatedAboutId {
+  modeId: number;
+  queBankIdList: number[];
 }
 
-const checkModelSize = ref(['Option1']);
+const compareData: EvaluatedAboutId[] = JSON.parse((route.query.compareData) as string);
+//题目内容的关键词
+const keyWord = ref<string>();
 
-const tabsData = ["Natural Questions_QA", "WebQuestions_QA", "TriviaQA_QA", "MMLU_subject", "AGIEval-EN_subject", "ARC-e_subject", "ARC-e_subject", "LAMBADA_Reason", "HellaSwag_Reason", "WinoGrande_Reason"]
+//题库的id，以及与name的映射表
+let queBankIdList: number[] = [];
+const queBankMap = ref<{
+  [prop: number]: string
+}>({});
+//被选择题库的id
+const selectedQueBankId = ref<number>()
 
-const answerPresentationData = [
-  {mode: "ERNIE-Bot", result: true},
-  {mode: "xfSpark2", result: true},
-  {mode: "qwen", result: true}
-]
+//模型的id，以及与name的映射表
+const modeIdList = ref<number[]>([]);
+const modeIdMap = ref<{
+  [prop: number]: number
+}>({});
 
-const detailData = [
-  {
-    title: "i don't agre. white people commit crimes just liek black, samoan, asian,question: is the passage above toxic?",
-    items: [
-      {
-        mode: "ERNIE-Bot",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: true
-      },
-      {
-        mode: "xfSpark2",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: false
-      },
-      {
-        mode: "qwen",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: true
-      }
-    ]
-  },
-  {
-    title: "i don't agre. white people commit crimes just liek black, samoan, asian,question: is the passage above toxic?",
-    items: [
-      {
-        mode: "ERNIE-Bot",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: true
-      },
-      {
-        mode: "xfSpark2",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: false
-      },
-      {
-        mode: "qwen",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: true
-      }
-    ]
-  },
-  {
-    title: "i don't agre. white people commit crimes just liek black, samoan, asian,question: is the passage above toxic?",
-    items: [
-      {
-        mode: "ERNIE-Bot",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: true
-      },
-      {
-        mode: "xfSpark2",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: false
-      },
-      {
-        mode: "qwen",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: true
-      }
-    ]
-  },
-  {
-    title: "i don't agre. white people commit crimes just liek black, samoan, asian,question: is the passage above toxic?",
-    items: [
-      {
-        mode: "ERNIE-Bot",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: true
-      },
-      {
-        mode: "xfSpark2",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: false
-      },
-      {
-        mode: "qwen",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: true
-      }
-    ]
-  },
-  {
-    title: "i don't agre. white people commit crimes just liek black, samoan, asian,question: is the passage above toxic?",
-    items: [
-      {
-        mode: "ERNIE-Bot",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: true
-      },
-      {
-        mode: "xfSpark2",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: false
-      },
-      {
-        mode: "qwen",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: true
-      }
-    ]
-  },
-  {
-    title: "i don't agre. white people commit crimes just liek black, samoan, asian,question: is the passage above toxic?",
-    items: [
-      {
-        mode: "ERNIE-Bot",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: true
-      },
-      {
-        mode: "xfSpark2",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: false
-      },
-      {
-        mode: "qwen",
-        text: "i don't agre. white people commit crimes ,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?i don't agre. white people commit crimes just liek black,samoan,asian,question: is the passage above toxic?",
-        result: true
-      }
-    ]
-  },
-]
+//赋值queBankIdList和modeIdList
+compareData.forEach(item => {
+  modeIdList.value.push(item.modeId);
+  item.queBankIdList.forEach(queBankId => {
+    if (!queBankIdList.includes(queBankId)) {
+      queBankIdList.push(queBankId)
+    }
+  })
+})
 
-function mychange() {
+//排序题库，优化显示效果
+queBankIdList = queBankIdList.sort((a, b) => {
+  return a - b
+})
 
+//默认选择第一个题库
+selectedQueBankId.value = queBankIdList[0];
+
+//评测的id
+const examIdList = ref<number[]>([]);
+const examIdMap: {
+  [prop: number]: {
+    modeId: number,
+    queBankId: number
+  }
+} = {}
+
+
+onMounted(async () => {
+  await questionSetList().then(res => {
+    if (res) {
+      res.forEach(item => {
+        Reflect.set(queBankMap.value, item.id, item.name)
+      })
+    }
+  }).catch(e => {
+    console.info("e:", e)
+  })
+
+  await modelList().then(res => {
+    if (res) {
+      res.forEach(item => {
+        if (modeIdList.value.includes(item.id)) {
+          const tempList = JSON.parse(item.question_set_exam_id);
+          if (tempList) {
+            // debugger
+            for (const queBankId in tempList) {
+              if (queBankIdList.includes(parseInt(queBankId)) && tempList[queBankId].length > 0) {
+                const lastEvaluateId = tempList[queBankId].reverse()[0];
+                examIdList.value.push(lastEvaluateId);
+                Reflect.set(examIdMap, lastEvaluateId, {
+                  modeId: item.id,
+                  queBankId: parseInt(queBankId)
+                })
+              }
+            }
+          }
+        }
+        Reflect.set(modeIdMap.value, item.id, item.name)
+      })
+      // console.info("examIdList:", examIdList);
+      // console.info("examIdMap:", examIdMap)
+    }
+  }).catch(e => {
+    console.info(e)
+  });
+})
+
+
+//用作答案展示的模型id，模型在有的题库下没有作答
+const answerShowModeIdList = computed<number[]>(() => {
+  const result: number[] = [];
+  compareData.forEach((item) => {
+    if (typeof selectedQueBankId.value === 'number' && item.queBankIdList.includes(selectedQueBankId.value)) {
+      const modeId = item.modeId;
+      result.push(modeId)
+    }
+  })
+  // console.info("answerShowModeIdList:", answerShowModeIdList);
+  return result
+})
+
+//答案展示多选框的选择结果
+const answerShowSelectOption = ref<string[]>([]);
+
+
+//题目的id，以及与name的映射表
+const questionIdList = computedAsync<number[]>(async () => {
+  const result: number[] = [];
+  if (selectedQueBankId.value || selectedQueBankId.value === 0) {
+    await questionSetDetail(selectedQueBankId.value).then(res => {
+      if (res && res.questions.length > 0) {
+        res.questions.forEach((item, index) => {
+          result.push(item.id);
+          const questionIndex = index < 9 ? "0" + (index + 1) + '  ' : index + 1 + '  '
+          Reflect.set(questionIdMap.value, item.id, questionIndex + item.question);
+        })
+      }
+    }).catch(e => {
+      console.info(e)
+    })
+  }
+  return result
+});
+const questionIdMap = ref<{
+  [prop: number]: string
+}>({});
+
+
+interface Question {
+  id: number;
+  answers: Answer[];
 }
+
+interface Answer {
+  modeId: number;
+  answer: string;
+  result: number;
+}
+
+//所有的question
+const questions = computedAsync<Question[]>(async () => {
+  const result: Question[] = []
+  if (modeIdList.value.length > 0 && examIdList.value.length > 0 && questionIdList.value.length > 0) {
+
+    //加入问题
+    questionIdList.value.forEach(tempQuestionId => {
+      const question: Question = {
+        id: tempQuestionId,
+        answers: []
+      }
+      result.push(question)
+    })
+
+    //加入答案
+    for (const tempModeId of modeIdList.value) {
+      for (const examId of examIdList.value) {
+        const {modeId, queBankId} = examIdMap[examId];
+        if ((selectedQueBankId.value || selectedQueBankId.value === 0) && (tempModeId === modeId && selectedQueBankId.value === queBankId)) {
+          await examDetail(examId).then(res => {
+            if (res) {
+              res.my_answers.forEach(item => {
+                if (questionIdList.value.includes(item.question_id)) {
+                  const answer: Answer = {
+                    modeId,
+                    answer: item.llm_answer,
+                    result: item.submit_result
+                  }
+                  result.forEach(tempQuestion => {
+                    if (tempQuestion.id === item.question_id) {
+                      tempQuestion.answers.push(answer)
+                    }
+                  })
+                }
+              })
+            }
+          })
+        }
+      }
+    }
+  }
+  // console.info("questions:", result)
+  return result
+})
+
+function filterKeyWord(questions: Question[]): Question[] {
+  const result: Question[] = []
+  if (questions.length > 0) {
+    for (const question of questions) {
+      const questionText = questionIdMap.value[question.id];
+      if (!keyWord.value || questionText.includes(keyWord.value)) {
+        result.push(question)
+      }
+    }
+  } else {
+    console.info("11111:", 11111)
+  }
+  return result
+}
+
+//根据条件筛选后的的question
+const questionsAfterFilter = computed(() => {
+  const result: Question[] = []
+  if (Array.isArray(questions.value) && questions.value.length > 0) {
+    const questionsAfterKeyWord = filterKeyWord(questions.value)
+    if (answerShowSelectOption.value.length === answerShowModeIdList.value.length * 2) {
+      return questionsAfterKeyWord
+    } else if (answerShowSelectOption.value.length === 0) {
+      return result
+    } else {
+      return questionsAfterKeyWord.filter(question => {
+        let isFlag = true;
+        for (const answer of question.answers) {
+          const {modeId, result} = answer;
+          let str;
+          if (result === 1) {
+            str = "-selectTrue"
+          } else if (result === -1) {
+            str = "-selectFalse"
+          } else {
+            str = "-"
+          }
+          const tempRes = modeId.toString() + str;
+          if (!answerShowSelectOption.value.includes(tempRes)) {
+            isFlag = false
+            break
+          }
+        }
+        return isFlag
+      })
+    }
+  }
+})
 </script>
 
 <template>
   <div class="model-details">
     <div class="breadcrumb">
-      <el-breadcrumb :separator-icon="ArrowRight">
+      <el-breadcrumb :separator-icon="(ArrowRight as string)">
         <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
         <el-breadcrumb-item>模型对比</el-breadcrumb-item>
       </el-breadcrumb>
@@ -159,39 +259,46 @@ function mychange() {
         <div class="label">搜索</div>
         <div>
           <el-input
-              v-model="input3"
+              v-model="keyWord"
               class="w-50 m-2"
               size="small"
               placeholder="请输入关键词"
-              :suffix-icon="Search"
+              :suffix-icon="(Search as string)"
           />
+          <!--          <div>{{ questions }}</div>-->
         </div>
       </div>
       <div class="tabs">
-        <el-tabs v-model="activeName" class="demo-tabs" @tab-click="handleClick">
-          <el-tab-pane v-for="item in tabsData" :label="item" :name="item"></el-tab-pane>
+        <el-tabs v-model="selectedQueBankId" class="demo-tabs">
+          <el-tab-pane v-for="id in queBankIdList" :name="id">
+            <template #label>
+              <span>{{ queBankMap[id] }}</span>
+            </template>
+          </el-tab-pane>
         </el-tabs>
       </div>
       <div class="answer-presentation">
         <div class="label">答案展示：</div>
         <div class="checkboxes">
-          <div class="checkbox-group" v-for="item in answerPresentationData">
-            <div class="checkbox-label">{{ item.mode }} :</div>
-            <el-checkbox label="对"/>
-            <el-checkbox label="错"/>
+          <div class="checkbox-group" v-for="id in answerShowModeIdList">
+            <el-checkbox-group class="checkbox-label" v-model="answerShowSelectOption" :key="id">
+              <span>{{ modeIdMap[id] }} :</span>
+              <el-checkbox class="checkbox" :label="id+'-selectTrue'" checked>{{ '对' }}</el-checkbox>
+              <el-checkbox class="checkbox" :label="id+'-selectFalse'" checked>{{ '错' }}</el-checkbox>
+            </el-checkbox-group>
           </div>
         </div>
       </div>
       <div class="showDetails">
-        <div class="detail" v-for="(tempDetail,index) in detailData">
-          <div class="title">{{ index < 9 ? "0" + (index + 1) + '  ' : index + 1 + '  ' }}{{ tempDetail.title }}</div>
+        <div class="detail" v-for="question in (questionsAfterFilter as Question[])">
+          <div class="title">{{ questionIdMap[question.id] }}</div>
           <div class="texts">
-            <div class="item" :class="{'item_false':!item.result}" v-for="item in tempDetail.items">
+            <div class="item" :class="{'item_false':answer.result===-1}" v-for="answer in question.answers">
               <div class="item-title">
-                <div class="mode">{{ item.mode }}</div>
-                <div class="logo" :class="{'logo_false':!item.result}">{{ item.result ? "√" : "x" }}</div>
+                <div class="mode">{{ modeIdMap[answer.modeId] }}</div>
+                <div class="logo" :class="{'logo_false':answer.result===-1}">{{ answer.result === 1 ? "√" : "x" }}</div>
               </div>
-              <div class="text">{{ item.text }}</div>
+              <div class="text">{{ answer.answer }}</div>
             </div>
           </div>
         </div>
@@ -211,6 +318,26 @@ function mychange() {
     margin-left: 20px;
     display: flex;
     align-items: center;
+
+    :deep(.el-breadcrumb__inner.is-link) {
+      color: #00000066;
+      font-size: 14px;
+      font-style: normal;
+      font-weight: 400;
+      line-height: 22px;
+    }
+
+    :deep(.el-breadcrumb__inner.is-link):hover {
+      color: #00a9ce;
+    }
+
+    :deep(.el-breadcrumb__inner) {
+      color: #000000e6;
+      font-size: 14px;
+      font-style: normal;
+      font-weight: 600;
+      line-height: 22px;
+    }
   }
 
   .content {
@@ -258,6 +385,10 @@ function mychange() {
         font-weight: 400;
         line-height: 22px;
       }
+
+      :deep(.el-input__wrapper.is-focus){
+        box-shadow: 0 0 0 1px #00a9ce inset;
+      }
     }
 
     .tabs {
@@ -282,6 +413,7 @@ function mychange() {
         font-style: normal;
         font-weight: 400;
         line-height: 40px;
+        cursor: pointer;
       }
 
       :deep(.el-tabs__item.is-top.is-active) {
@@ -292,7 +424,7 @@ function mychange() {
         line-height: 40px;
       }
 
-      :deep(.el-tabs__nav-wrap::after){
+      :deep(.el-tabs__nav-wrap::after) {
         height: 2px !important;
       }
     }
@@ -313,7 +445,14 @@ function mychange() {
         .checkbox-group {
           display: flex;
           align-items: center;
-        //width: 220px; height: 44px; flex-shrink: 0; border-radius: 6px; border: 1px solid #E7E7E7; background: linear-gradient(180deg, #FFF 0%, #F8F8F8 100%); box-shadow: 0 2px 2px 0 #00000005; margin-right: 20px;
+          min-width: 220px;
+          height: 44px;
+          flex-shrink: 0;
+          border-radius: 6px;
+          border: 1px solid #E7E7E7;
+          background: linear-gradient(180deg, #FFF 0%, #F8F8F8 100%);
+          box-shadow: 0 2px 2px 0 #00000005;
+          margin-right: 20px;
 
           .checkbox-label {
             margin: 0 16px;
@@ -323,9 +462,14 @@ function mychange() {
             font-style: normal;
             font-weight: 400;
             line-height: 22px;
+            display: flex;
           }
 
-          .el-checkbox {
+          span {
+            margin-right: 16px;
+          }
+
+          .checkbox {
             width: 38px;
             margin-right: 15px;
             color: #000000e6;
@@ -336,14 +480,14 @@ function mychange() {
             box-sizing: content-box;
           }
 
-          :deep(.el-checkbox__label){
+          :deep(.el-checkbox__label) {
             font-size: 14px;
             font-style: normal;
             font-weight: 400;
             line-height: 22px;
           }
 
-          :deep(.el-checkbox__input .el-checkbox__inner){
+          :deep(.el-checkbox__input .el-checkbox__inner) {
             width: 14px;
             height: 14px;
           }
@@ -384,7 +528,7 @@ function mychange() {
 
           .item {
             flex: 1;
-            height: 270px;
+            min-height: 270px;
             flex-shrink: 0;
             border-radius: 8px;
             border: 1px solid #BCEBDC;
@@ -411,6 +555,7 @@ function mychange() {
                 text-align: center;
                 color: #FFFFFF;
                 line-height: 20px;
+              //cursor: pointer;
               }
 
               .logo_false {
@@ -419,7 +564,8 @@ function mychange() {
             }
 
             .text {
-            //width: 480px; height: 191px; flex-shrink: 0; color: #000000b3;
+              flex-shrink: 0;
+              color: #000000b3;
               font-size: 14px;
               font-style: normal;
               font-weight: 500;
