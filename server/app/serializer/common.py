@@ -101,7 +101,7 @@ class ClientError(Base):
 
 
 class BasicAuthError(Base):
-    error_code = 2007
+    error_code = 401
     data = None
     message = 'Basic 鉴权失败'
 

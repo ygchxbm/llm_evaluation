@@ -1,6 +1,7 @@
 from . import db
 from app.models import model
 from enum import Enum
+from sqlalchemy import UniqueConstraint
 
 # https://dormousehole.readthedocs.io/en/latest/patterns/sqlalchemy.html
 # 增删改查 https://blog.csdn.net/Co_zy/article/details/77937195
@@ -22,11 +23,18 @@ class LlmModel(model.BaseModel):
     score = db.Column(db.Integer, nullable = False)
     score_detail = db.Column(db.Text)
     score_detail_question_set = db.Column(db.Text)
+    question_set_exam_id = db.Column(db.Text)
     scale = db.Column(db.Integer, nullable = False)  # 规模大小，单位：
     conclusion = db.Column(db.String(500))  # 结论
     conclusion_user_id = db.Column(db.Integer, index=True)  # 结论人
     conclusion_user = db.Column(db.String(50))
     exam_count = db.Column(db.Integer)  # 考试次数
+
+    # # 定义联合唯一索引
+    # __table_args__ = (
+    #     UniqueConstraint('name', 'deleted_at', name='uix_name'),
+    #     UniqueConstraint('model_name', 'deleted_at', name='uix_model_name'),
+    # )
 
     def __init__(self, name=None, model_name=None, type_id=None, scale=None, conclusion=None, conclusion_user_id=None, conclusion_user=None, exam_count=None):
         self.name = name
@@ -82,7 +90,7 @@ class LlmModel(model.BaseModel):
         return True
 
     @classmethod
-    def update_submit(cls, llm_model_id, exam_count, score, score_detail, score_detail_question_set):
+    def update_submit(cls, llm_model_id, exam_count, score, score_detail, score_detail_question_set, question_set_exam_id):
         update_dict = {
             'exam_count': exam_count,
             'score': score,
@@ -92,6 +100,8 @@ class LlmModel(model.BaseModel):
             update_dict['score_detail'] = score_detail
         if len(score_detail_question_set) > 0:
             update_dict['score_detail_question_set'] = score_detail_question_set
+        if len(question_set_exam_id) > 0:
+            update_dict['question_set_exam_id'] = question_set_exam_id
 
         # 修改数据
         cls.query.filter(LlmModel.id == llm_model_id).update(update_dict)

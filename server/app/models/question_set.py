@@ -20,6 +20,11 @@ class QuestionSet(model.BaseModel):
     modify_user_id = db.Column(db.Integer, index=True, nullable=False)  # 最后修改人
     modify_user = db.Column(db.String(50))
 
+    # # 定义联合唯一索引
+    # __table_args__ = (
+    #     UniqueConstraint('name', 'deleted_at', name='uix_name'),
+    # )
+
     def __init__(self, name=None, create_user_id=None, create_user=None):
         self.name = name
         self.create_user_id = create_user_id
