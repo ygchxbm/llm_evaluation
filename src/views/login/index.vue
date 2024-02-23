@@ -4,19 +4,23 @@ import {onMounted, ref} from "vue";
 import router from "@/router";
 
 
-interface StoredData{
-  expiration:number;
-  value:string;
+interface StoredData {
+  expiration: number;
+  value: string;
+  userId: number;
 }
+
 const isLoginBtn = ref(true);
-const url = 'https://oasisdev.qq.com/oauth2/auth?client_id=CO7GBRGDJHBBDBMTCOT6CBGR25M&redirect_uri=https://lightpaw.com/Login&response_type=code&scope=openid+offline&state=Hy%2Bsb%2BWUGK0X50yBYf7FVzBhEZTMBDaPVXzqelHZUdY%3D'
+const env = import.meta.env;
+const redirectUri: string = env.VITE_REDIRECT_URL
+const url = `https://oasisdev.qq.com/oauth2/auth?client_id=${env.VITE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=openid+offline&state=Hy%2Bsb%2BWUGK0X50yBYf7FVzBhEZTMBDaPVXzqelHZUdY%3D`
 
 const headerName = "Authorization";
 onMounted(() => {
-  let storedDataJson:string|null = localStorage.getItem(headerName);
+  let storedDataJson: string | null = localStorage.getItem(headerName);
   // localStorage.removeItem(headerName);
   if (storedDataJson) {
-    const storedData:StoredData = JSON.parse(storedDataJson);
+    const storedData: StoredData = JSON.parse(storedDataJson);
     const currentTime = new Date().getTime();
     if (currentTime > storedData.expiration * 1000) {
       // 数据已过期，清除
@@ -24,7 +28,7 @@ onMounted(() => {
       storedDataJson = null;
       verify()
     } else {
-      routeToLogin()
+      window.location.href = redirectUri.split('/Login')[0];
     }
   } else {
     verify()
@@ -35,14 +39,15 @@ function verify() {
   const newUrl = document.URL;
   if (newUrl.includes('code=') && newUrl.includes('scope')) {
     const code: string = newUrl.split('code=')[1].split('&scope')[0];
-    debugger
-    login(code).then(res => {
-      if(res){
-        const {access_token,expires_in}=res;
+    login(code, redirectUri).then(res => {
+      if (res) {
+        debugger
+        const {access_token, expires_in} = res;
         const headerValue = `Bearer ${access_token}`;
-        localStorage.setItem(headerName, JSON.stringify({value: headerValue, expiration: expires_in}));
+        const userId: number = res.userinfo.id;
+        localStorage.setItem(headerName, JSON.stringify({value: headerValue, expiration: expires_in, userId}));
         isLoginBtn.value = false;
-        routeToLogin()
+        window.location.href = redirectUri.split('/Login')[0];
       }
     }).catch(e => {
       console.info(e)

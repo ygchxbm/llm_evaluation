@@ -12,6 +12,7 @@ const service = axios.create({
 interface StoredData{
     expiration:number;
     value:string;
+    userId:number;
 }
 // 添加请求拦截器
 service.interceptors.request.use(

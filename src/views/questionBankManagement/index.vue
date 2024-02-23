@@ -41,7 +41,7 @@ function createQuestionBank() {
 }
 
 async function init(newQuestionBankId?: number) {
-  await questionSetList().then(res => {
+  await questionSetList(1).then(res => {
     questionBankList.value = res;
   }).catch(e => {
     console.info("e:", e)

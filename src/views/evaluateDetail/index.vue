@@ -105,7 +105,7 @@ async function changeProgressCount(value: number) {
       const sum = barData.value.scores.reduce((val, next) => {
         return val + next*2
       }, 0)
-      debugger
+      // debugger
       let averageScore = parseFloat((sum / barData.value.scores.length).toFixed(1));
       await router.push({
         name: "EvaluateEnd",

@@ -1,3 +1,5 @@
+// noinspection SpellCheckingInspection
+
 import request from "@/utils/request";
 
 interface UserInfo {
@@ -18,13 +20,14 @@ interface LoginRes {
     code: number;
     data: LoginData;
 }
+
 /*
 * 登录接口
 */
-export async function login(code: string): Promise<LoginData | null> {
+export async function login(code: string, redirectUri: string): Promise<LoginData | null> {
     const formData = new FormData();
     formData.append('code', code);
-    formData.append('redirect_uri', 'https://lightpaw.com/Login');
+    formData.append('redirect_uri', redirectUri);
     const result: LoginRes = await request(`user/login`, {method: 'POST', headers: {'Content-type': 'application/x-www-form-urlencoded; charset=;UTF-8'}, data: formData})
     if (result.code === 0) {
         return result.data
@@ -50,42 +53,48 @@ let questionSetListCache: questionSetItem[] | null = null;
 /**
  * 获取题库list
  */
-export async function questionSetList(): Promise<questionSetItem[]> {
-    const res = await request('question_set/list?site=llm_evaluation');
+export async function questionSetList(type?: number | undefined): Promise<questionSetItem[]> {
+    let url
+    if (typeof type === "undefined") {
+        url = 'question_set/list?site=llm_evaluation'
+    } else {
+        url = `question_set/list?site=llm_evaluation&type=${type}`
+    }
+    const res = await request(url);
     const {data} = res;
     questionSetListCache = data as unknown as questionSetItem[];
     return questionSetListCache
 }
 
-export interface questionSetItemForAuto{
-    create_user:string;
-    create_user_id:number;
-    created_at:string;
-    deleted_at:string|null;
-    id:number;
-    modify_user:string;
-    modify_user_id:number;
-    name:string;
-    question_set_list:{
-        create_user:string;
-        create_user_id:number;
-        created_at:string;
-        deleted_at:string|null;
-        id:number;
-        modify_user:string;
-        modify_user_id:number;
-        name:string;
-        question_set_set_id:number
-        updated_at:string;
+export interface questionSetItemForAuto {
+    create_user: string;
+    create_user_id: number;
+    created_at: string;
+    deleted_at: string | null;
+    id: number;
+    modify_user: string;
+    modify_user_id: number;
+    name: string;
+    question_set_list: {
+        create_user: string;
+        create_user_id: number;
+        created_at: string;
+        deleted_at: string | null;
+        id: number;
+        modify_user: string;
+        modify_user_id: number;
+        name: string;
+        question_set_set_id: number
+        updated_at: string;
     }[];
-    updated_at:string;
+    updated_at: string;
 }
 
-export async function questionSetListForAuto(): Promise<questionSetItemForAuto[]|null> {
+export async function questionSetListForAuto(): Promise<questionSetItemForAuto[] | null> {
     const res = await request('question_set_set/list?site=llm_evaluation');
-    if(res){
+    if (res) {
         return res.data
-    }else {
+    } else {
         return null
     }
 
@@ -211,17 +220,17 @@ export function deleteQuestions(id: number) {
  * @param deadline
  * @return 评测任务的id
  */
-export async function createExam(questionSetIds: number[], modelIds: number[],type:number, deadline?: string): Promise<number[]|null> {
+export async function createExam(questionSetIds: number[], modelIds: number[], type: number, deadline?: string): Promise<number[] | null> {
     const formData = new URLSearchParams()
-    formData.append('set_ids',JSON.stringify(questionSetIds));
-    formData.append('llm_model_ids',JSON.stringify(modelIds));
+    formData.append('set_ids', JSON.stringify(questionSetIds));
+    formData.append('llm_model_ids', JSON.stringify(modelIds));
     formData.append('type', String(type));
     const res = await request(`exam/add?site=llm_evaluation`, {method: 'POST', headers: {'Content-type': 'application/x-www-form-urlencoded; charset=;UTF-8'}, data: formData});
-    if(res.code===0){
-        return res.data.map((item:any) => {
+    if (res.code === 0) {
+        return res.data.map((item: any) => {
             return item.id
         });
-    }else{
+    } else {
         return null
     }
 
@@ -241,7 +250,7 @@ export interface examItem {
     question_count: number;
     question_set_id: number;
     questions: Question[];
-    llm_model_name:string;
+    llm_model_name: string;
 }
 
 let examItemCache: examItem | null = null
@@ -272,9 +281,9 @@ export function submitScore(exam_detail_id: number, submit_score: number, submit
     }
     const formData = new FormData();
     formData.append('exam_detail_id', exam_detail_id.toString());
-    formData.append('submit_score', submit_score);
-    formData.append('submit_remark', submit_remark);
+    formData.append('submit_score', submit_score.toString());
     formData.append('submit_timecost', submit_timecost.toString());
+    formData.append('submit_remark', submit_remark);
     return request(`exam_detail/submit_score?site=llm_evaluation`, {
         method: 'POST',
         headers: {'Content-type': 'application/x-www-form-urlencoded; charset=;UTF-8'},
@@ -315,7 +324,13 @@ interface ExamListData {
 * 获取评测任务列表
 */
 export async function examList(option: examListOption): Promise<ExamListData | null> {
-    const res = await request(`exam/list?site=llm_evaluation&page_num=${option?.page_num}&page_size=${option?.page_size}&llm_model_id=${option?.llm_model_id}&create_user_id=${option?.create_user_id}&created_time_min=${option?.created_time_min}&created_time_max=${option?.created_time_max}`)
+    let url=`exam/list?site=llm_evaluation`
+    // let url=`exam/list?site=llm_evaluation&page_num=${option?.page_num}&page_size=${option?.page_size}&llm_model_id=${option?.llm_model_id}&create_user_id=${option?.create_user_id}&created_time_min=${option?.created_time_min}&created_time_max=${option?.created_time_max}`
+    Object.keys(option).forEach(key=>{
+        const value=Reflect.get(option,key);
+        url=url+`&${key}=${value}`
+    })
+    const res = await request(url)
     if (res.code !== 0) {
         return null
     } else {

@@ -79,15 +79,16 @@ const tableData = computed(() => {
     })
   }
   const tempResult = filterData(result).reverse();
-  // debugger
   let i = 0;
   const length = tempResult.length;
   if (length > 0) {
     let activeIndex = 0;
-    const startIndexObj:{[props:number]:number}={}
-     mergeData.value= {
-      startIndexObj:startIndexObj,
-      mergeIndex:[],
+    const startIndexObj: {
+      [props: number]: number
+    } = {}
+    mergeData.value = {
+      startIndexObj: startIndexObj,
+      mergeIndex: [],
     };
     let mergeLength = 1;
     while (i < length - 1) {
@@ -118,7 +119,6 @@ const tableData = computed(() => {
   }
 
 
-
   // console.info("mergeData:", mergeData.value)
   return tempResult
 })
@@ -135,7 +135,6 @@ function parseTime(timeStr: string): string {
 const questionBankListForAuto = ref<questionSetItemForAuto[]>([]);
 
 onMounted(async () => {
-  // debugger
   await questionSetList().then(res => {
     questionBankList.value = res;
     res.forEach(item => {
@@ -169,7 +168,6 @@ onMounted(async () => {
 
   await questionSetListForAuto().then(res => {
     if (res) {
-      debugger
       questionBankListForAuto.value = res;
     }
   })
@@ -186,17 +184,27 @@ onMounted(async () => {
       }
     })
 
-    console.info("questionGroupMap:", questionGroupMap.value)
+    // console.info("questionGroupMap:", questionGroupMap.value)
   }
 
-  await examList({page_size: 9999, create_user_id: 4}).then(res => {
-    if (res) {
-      debugger
-      examDataList.value = res.items
-    }
-  }).catch(e => {
-    console.info(e)
-  });
+  interface StoredData {
+    expiration: number;
+    value: string;
+    userId: number
+  }
+
+  let storedDataJson: string | null = localStorage.getItem("Authorization");
+  if (storedDataJson) {
+    const storedData: StoredData = JSON.parse(storedDataJson);
+    const userId = storedData.userId;
+    await examList({page_size: 9999, create_user_id: userId}).then(res => {
+      if (res) {
+        examDataList.value = res.items
+      }
+    }).catch(e => {
+      console.info(e)
+    });
+  }
 })
 
 function filterData(data: Row[]) {
@@ -207,7 +215,12 @@ function filterData(data: Row[]) {
 }
 
 const questionGroupMap = ref({})
-const mergeData = ref<{startIndexObj:{[props:number]:number};mergeIndex:number[]} | undefined>(undefined);
+const mergeData = ref<{
+  startIndexObj: {
+    [props: number]: number
+  };
+  mergeIndex: number[]
+} | undefined>(undefined);
 
 interface User {
   id: string
@@ -226,16 +239,15 @@ interface SpanMethodProps {
 
 function spanMethod({rowIndex, columnIndex,}: SpanMethodProps) {
   if (mergeData.value) {
-    // debugger
-    if (mergeData.value.mergeIndex.includes(rowIndex) && (columnIndex === 0||columnIndex === 1||columnIndex === 2)) {
+    if (mergeData.value.mergeIndex.includes(rowIndex) && (columnIndex === 0 || columnIndex === 1 || columnIndex === 2)) {
       return {
         rowspan: 0,
         colspan: 0,
       }
     }
 
-    const length=mergeData.value.startIndexObj[rowIndex];
-    if (length && (columnIndex === 0|| columnIndex === 1||columnIndex === 2)) {
+    const length = mergeData.value.startIndexObj[rowIndex];
+    if (length && (columnIndex === 0 || columnIndex === 1 || columnIndex === 2)) {
       return {
         rowspan: length,
         colspan: 1,
