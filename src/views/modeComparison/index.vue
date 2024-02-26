@@ -76,7 +76,6 @@ onMounted(async () => {
         if (modeIdList.value.includes(item.id)) {
           const tempList = JSON.parse(item.question_set_exam_id);
           if (tempList) {
-            // debugger
             for (const queBankId in tempList) {
               if (queBankIdList.includes(parseInt(queBankId)) && tempList[queBankId].length > 0) {
                 const lastEvaluateId = tempList[queBankId].reverse()[0];
@@ -155,7 +154,6 @@ interface Answer {
 const questions = computedAsync<Question[]>(async () => {
   const result: Question[] = []
   if (modeIdList.value.length > 0 && examIdList.value.length > 0 && questionIdList.value.length > 0) {
-
     //加入问题
     questionIdList.value.forEach(tempQuestionId => {
       const question: Question = {
@@ -192,7 +190,6 @@ const questions = computedAsync<Question[]>(async () => {
       }
     }
   }
-  // console.info("questions:", result)
   return result
 })
 
@@ -231,8 +228,10 @@ const questionsAfterFilter = computed(() => {
           } else if (result === -1) {
             str = "-selectFalse"
           } else {
-            str = "-"
+            // str = "-"
+            str = "-selectFalse"
           }
+
           const tempRes = modeId.toString() + str;
           if (!answerShowSelectOption.value.includes(tempRes)) {
             isFlag = false
@@ -296,7 +295,7 @@ const questionsAfterFilter = computed(() => {
             <div class="item" :class="{'item_false':answer.result===-1}" v-for="answer in question.answers">
               <div class="item-title">
                 <div class="mode">{{ modeIdMap[answer.modeId] }}</div>
-                <div class="logo" :class="{'logo_false':answer.result===-1}">{{ answer.result === 1 ? "√" : "x" }}</div>
+                <div class="logo" :class="{'logo_false':answer.result===-1}">{{ answer.result === -1 ? "x" : "√" }}</div>
               </div>
               <div class="text">{{ answer.answer }}</div>
             </div>
@@ -386,7 +385,7 @@ const questionsAfterFilter = computed(() => {
         line-height: 22px;
       }
 
-      :deep(.el-input__wrapper.is-focus){
+      :deep(.el-input__wrapper.is-focus) {
         box-shadow: 0 0 0 1px #00a9ce inset;
       }
     }

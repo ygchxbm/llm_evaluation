@@ -12,7 +12,7 @@ const score = computed(() => {
     const length = tempRating.split('.')[1].length;
     return parseFloat(tempRating).toFixed(length);
   } else {
-    return parseFloat(tempRating) / 2 + '.0'
+    return parseFloat(tempRating) + '.0'
   }
 })
 
@@ -36,7 +36,7 @@ function backHome() {
       <div class="score">
         <span class="score-label">评分：</span>
         <span class="score-text">{{ score }}</span>
-        <el-rate v-model="rating" clearable allow-half size="large" :colors="['#00A9CE','#00A9CE','#00A9CE']"/>
+        <el-rate v-model="rating" clearable allow-half size="large" :colors="['#00A9CE','#00A9CE','#00A9CE']" disabled/>
       </div>
     </div>
   </div>

@@ -315,6 +315,38 @@ export interface ExamListItem {
     updated_at: string
 }
 
+
+export interface UserData {
+    id: number;
+    name: string | null;
+
+    [prop: string]: number | string | null;
+}
+
+interface UserList {
+    code: number,
+    data: UserData[]
+}
+
+/*
+* 获取用户信息
+*/
+export async function userList(): Promise<UserData[] | null> {
+    const res = await request("user/list");
+    const {code, data} = res;
+    if (code === 0) {
+        return data
+    } else {
+        return null
+    }
+}
+
+
+interface ExamListData {
+    items: ExamListItem[],
+    total: number
+}
+
 interface ExamListData {
     items: ExamListItem[],
     total: number
@@ -324,11 +356,11 @@ interface ExamListData {
 * 获取评测任务列表
 */
 export async function examList(option: examListOption): Promise<ExamListData | null> {
-    let url=`exam/list?site=llm_evaluation`
+    let url = `exam/list?site=llm_evaluation`
     // let url=`exam/list?site=llm_evaluation&page_num=${option?.page_num}&page_size=${option?.page_size}&llm_model_id=${option?.llm_model_id}&create_user_id=${option?.create_user_id}&created_time_min=${option?.created_time_min}&created_time_max=${option?.created_time_max}`
-    Object.keys(option).forEach(key=>{
-        const value=Reflect.get(option,key);
-        url=url+`&${key}=${value}`
+    Object.keys(option).forEach(key => {
+        const value = Reflect.get(option, key);
+        url = url + `&${key}=${value}`
     })
     const res = await request(url)
     if (res.code !== 0) {

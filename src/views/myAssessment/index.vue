@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import {computed, onMounted, ref} from "vue";
+import {onMounted, ref} from "vue";
 import {ElTable} from "element-plus";
 import type {TableColumnCtx} from 'element-plus'
-import {modelList, questionSetItem, questionSetList, examList, ExamListItem, questionSetListForAuto, questionSetItemForAuto} from "@/api";
+import {modelList, questionSetItem, questionSetList, examList, ExamListItem, questionSetListForAuto, questionSetItemForAuto, userList} from "@/api";
+import {computedAsync} from "@vueuse/core";
 
 //所有发起人
-const initiatorOptions = ref<string[]>([]);
+const initiatorOptionsMap = ref<Map<string, string>>(new Map());
+
 //已选择的发起人
 const selectedInitiator = ref<string>("");
 //已选择的时间
@@ -23,7 +25,7 @@ let modeNameList = ref<{
   [prop: number]: string
 }>({});//{modeId:modeName}
 let questionScores = ref<object>({});//{modeId:{questionBankName:score}}
-const examDataList = ref<ExamListItem[]>([]);
+// const examDataList = ref<ExamListItem[]>([]);
 
 //月份英文缩写与月份数组的映射表
 const monthMap: {
@@ -55,10 +57,33 @@ interface Row {
   id: number
 }
 
-const tableData = computed(() => {
-  const result: Row[] = []
-  if (examDataList.value && examDataList.value.length > 0) {
-    examDataList.value.forEach(item => {
+const tableData = computedAsync(async () => {
+  if (initiatorOptionsMap.value.size === 0) return []
+  let examDataList: ExamListItem[] = [];
+  let option = {
+    page_size: 9999,
+  }
+  if (selectedInitiator.value === '') {
+    Reflect.set(option, 'create_user_id', parseInt(selectedInitiator.value))
+  }
+
+  //用作收集依赖
+  if (selectedMode.value || selectedTime.value) {
+  }
+
+
+  await examList(option).then(res => {
+    if (res) {
+      examDataList = res.items
+    }
+  }).catch(e => {
+    console.info(e)
+  });
+
+
+  const tempResult: Row[] = []
+  if (examDataList && examDataList.length > 0) {
+    examDataList.forEach(item => {
       const initiatorName = item.create_user_id + '_' + item.create_user;
       const modeName = modeNameList.value[item.llm_model_id];
       const obj: Row = {
@@ -69,16 +94,18 @@ const tableData = computed(() => {
         '分数': item.submit_score,
         id: item.question_set_id
       };
-      if (!initiatorOptions.value.includes(initiatorName)) {
-        initiatorOptions.value.push(initiatorName)
-      }
       if (!modeOptions.value.includes(modeName)) {
         modeOptions.value.push(modeName)
       }
-      result.push(obj)
+      if ((initiatorName === initiatorOptionsMap.value.get(selectedInitiator.value) || !selectedInitiator.value)
+          && (modeName === selectedMode.value || !selectedMode.value)
+          && (parseTime(item.updated_at) === selectedTime.value || !selectedTime.value)) {
+        tempResult.unshift(obj)
+      }
     })
   }
-  const tempResult = filterData(result).reverse();
+
+  //合并单元格
   let i = 0;
   const length = tempResult.length;
   if (length > 0) {
@@ -187,6 +214,19 @@ onMounted(async () => {
     // console.info("questionGroupMap:", questionGroupMap.value)
   }
 
+
+  await userList().then(res => {
+    if (res) {
+      res.forEach(item => {
+        const {id, name} = item
+        const initiatorName = id + '_' + (name ? name : "");
+        if (!initiatorOptionsMap.value.has(id.toString())) {
+          initiatorOptionsMap.value.set(id.toString(), initiatorName)
+        }
+      })
+    }
+  })
+
   interface StoredData {
     expiration: number;
     value: string;
@@ -196,20 +236,13 @@ onMounted(async () => {
   let storedDataJson: string | null = localStorage.getItem("Authorization");
   if (storedDataJson) {
     const storedData: StoredData = JSON.parse(storedDataJson);
-    const userId = storedData.userId;
-    await examList({page_size: 9999, create_user_id: userId}).then(res => {
-      if (res) {
-        examDataList.value = res.items
-      }
-    }).catch(e => {
-      console.info(e)
-    });
+    selectedInitiator.value = storedData.userId.toString();
   }
 })
 
 function filterData(data: Row[]) {
   return data.filter(item => {
-    return (item['发起人'] === selectedInitiator.value || !selectedInitiator.value) && (item['模型名称'] === selectedMode.value || !selectedMode.value) && (item['评测时间'] === selectedTime.value || !selectedTime.value)
+    return (item['发起人'] === initiatorOptionsMap.value.get(selectedInitiator.value) || !selectedInitiator.value) && (item['模型名称'] === selectedMode.value || !selectedMode.value) && (item['评测时间'] === selectedTime.value || !selectedTime.value)
   })
 
 }
@@ -266,10 +299,10 @@ function spanMethod({rowIndex, columnIndex,}: SpanMethodProps) {
           <span class="label">发起人</span>
           <el-select v-model="selectedInitiator" class="m-2" placeholder="请选择" size="small" :clearable=true>
             <el-option
-                v-for="item in initiatorOptions"
-                :key="item"
-                :label="item"
-                :value="item"
+                v-for="[id,initiatorName] in initiatorOptionsMap"
+                :key="id"
+                :label="initiatorName"
+                :value="id"
             />
           </el-select>
         </div>

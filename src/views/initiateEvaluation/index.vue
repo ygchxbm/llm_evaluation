@@ -60,13 +60,10 @@ onMounted(async () => {
         const queBankGroupName = item.name;
         allQueBankIdsForAuto.value[queBankGroupId] = [];
         Reflect.set(allQueBankGroupIdMap.value, queBankGroupId, queBankGroupName);
-        // debugger
         if (item.question_set_list && item.question_set_list.length > 0) {
           item.question_set_list.forEach(que => {
             const {id, name} = que;
-            // debugger
             allQueBankIdsForAuto.value[queBankGroupId].push(id);
-            // debugger
             Reflect.set(allQueBankIdMapForAuto, id, name);
           })
         }
@@ -96,7 +93,6 @@ async function submit() {
     if (selectedQuestionBankIds.value.length === 0) {
       alert('请选择题库')
     } else {
-      // debugger
       await createExam(selectedQuestionBankIds.value, selectedModeIds.value, 2).then(res=>{
         // console.info("res:", res)
         if(res){
@@ -126,7 +122,6 @@ async function submit() {
         background: 'rgba(0, 0, 0, 0.7)',
       })
 
-      // debugger
       // setTimeout(() => {
       //   loading.close();
       // }, 60000)
@@ -223,7 +218,6 @@ const allQueBankIdsForAutoOptions = computed(() => {
       })
       result.push(obj)
     })
-    // debugger
     return result
   }
 })
@@ -267,7 +261,7 @@ const props = {multiple: true}
             <el-option
                 v-for="item in modeDataList"
                 :key="item.id"
-                :label="item.name"
+                :label="item.model_name"
                 :value="item.id"
             />
           </el-select>
@@ -293,7 +287,7 @@ const props = {multiple: true}
             <el-option
                 v-for="item in modeDataList"
                 :key="item.id"
-                :label="item.name"
+                :label="item.model_name"
                 :value="item.id"
             />
           </el-select>

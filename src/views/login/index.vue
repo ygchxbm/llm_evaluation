@@ -41,7 +41,6 @@ function verify() {
     const code: string = newUrl.split('code=')[1].split('&scope')[0];
     login(code, redirectUri).then(res => {
       if (res) {
-        debugger
         const {access_token, expires_in} = res;
         const headerValue = `Bearer ${access_token}`;
         const userId: number = res.userinfo.id;

@@ -3,7 +3,7 @@
 import {ref, computed, onMounted} from "vue";
 import router from "@/router/index.js";
 import {ElTable} from "element-plus";
-import {questionSetList, modelList, modelItem, questionSetItem} from "@/api"
+import {questionSetList, modelList, modelItem, questionSetItem, questionSetListForAuto, questionSetItemForAuto} from "@/api"
 import {ElCollapseTransition} from 'element-plus'
 // fade/zoom
 // import 'element-plus/lib/theme-chalk/base.css'
@@ -47,13 +47,13 @@ const data = ref<MyData>()
 const multipleTableRef = ref<InstanceType<typeof ElTable>>()
 const multipleSelection = ref<Row[]>([])
 
-const checkEvaluationTask = ref<{[prop:number]:string}[]>([]);
+// const checkEvaluationTask = ref<{ [prop: number]: string }[]>([]);
 
 const isFlagTaskBtn = ref(false);
-const checkEvaluationTaskOption = computed<{[prop:number]:{name:string}}>(() => {
+const checkEvaluationTaskOption = computed<{ [prop: number]: { name: string } }>(() => {
   const result = {};
-  if(checkEvaluationTask.value&&checkEvaluationTask.value.length>0){
-    checkEvaluationTask.value.forEach(item => {
+  if (selectedBankForArtificial.value && selectedBankForArtificial.value.length > 0) {
+    selectedBankForArtificial.value.forEach(item => {
       const id: number = parseInt(Object.keys(item)[0]);
       const name = item[id];
       Reflect.set(result, id, {name})
@@ -69,6 +69,67 @@ const taskText = computed(() => {
     return '展开任务'
   }
 })
+
+const allQueBankIds = ref<number[]>([]);
+const allQueBankIdsForAuto = ref<{ [prop: number]: number[] }>({});
+const questionBankListForAuto = ref<questionSetItemForAuto[]>([]);
+const allQueBankIdMap = ref<{ [prop: number]: string }>({});
+const allQueBankGroupIdMap = ref<{ [prop: number]: string }>({});
+const allQueBankIdMapForAuto = ref<{ [prop: number]: string }>({});
+
+const allQueBankObjForArtificial = ref<{ [prop: number]: { name: string } }>({});
+
+interface QueBank2 {
+  value: number;
+  label: string;
+  children: QueBankChild[]
+}
+
+interface QueBankChild {
+  value: number;
+  label: string;
+}
+
+
+const allQueBankIdsForAutoOptions = computed(() => {
+  const result: QueBank2[] = []
+  if (allQueBankIdsForAuto.value && Object.keys(allQueBankIdsForAuto.value).length > 0) {
+    Object.keys(allQueBankIdsForAuto.value).forEach(queBankGroupId => {
+      const obj: QueBank2 = {
+        value: parseInt(queBankGroupId),
+        label: allQueBankGroupIdMap.value[parseInt(queBankGroupId)],
+        children: []
+      }
+      const item = allQueBankIdsForAuto.value[parseInt(queBankGroupId)];
+      item.forEach(queBankId => {
+        const obj1: QueBankChild = {
+          value: queBankId,
+          label: allQueBankIdMap.value[queBankId],
+        }
+        obj.children.push(obj1)
+      })
+      result.push(obj)
+    })
+    return result
+  }
+})
+
+
+const selectedBankForArtificial = ref<{ [prop: number]: string }[]>([]);
+const selectedBankForAuto = ref<number[][]>([]);
+const checkEvaluationTask = computed(() => {
+  const objs: any[] = []
+  selectedBankForAuto.value.forEach(item => {
+    const bankId = item[item.length - 1];
+    const obj = {[bankId]: allQueBankIdMap.value[bankId]};
+    objs.push(obj);
+  })
+  return objs.concat(selectedBankForArtificial.value)
+})
+
+
+
+const props = {multiple: true}
 
 function changeTaskBtn() {
   isFlagTaskBtn.value = !isFlagTaskBtn.value;
@@ -109,8 +170,6 @@ const tableData = computed<Row[]>(() => {
   const result = []
   if (data.value) {
     const {allModes, allScores} = data.value;
-    // console.info("allScores:", allScores)
-    // console.info("allModes:", allModes)
     for (const modeId in allModes) {
       const modeWithScore = allScores[modeId];
       const mode = allModes[modeId];
@@ -136,7 +195,6 @@ const tableData = computed<Row[]>(() => {
       }
     }
   }
-  // console.info("res:", result)
   return result
 })
 
@@ -145,14 +203,24 @@ onMounted(async () => {
   await questionSetList().then(res => {
     quesBank = res;
   }).catch(e => {
-    console.info("e:", e)
+    console.error("e:", e)
+  })
+
+  await questionSetList(1).then(res => {
+    if (res) {
+      res.forEach(item => {
+        const {id, name} = item;
+        Reflect.set(allQueBankObjForArtificial.value, id, {'name': name});
+      })
+    }
+  }).catch(e => {
+    console.error("e:", e)
   })
 
   await modelList().then(res => {
     modeList = res;
-    // console.info("scores:", res)
   }).catch(e => {
-    console.info(e)
+    console.error(e)
   });
 
   if (quesBank && modeList) {
@@ -162,15 +230,14 @@ onMounted(async () => {
         name: item.name,
       };
       Reflect.set(allQueBanks, item.id, queBank);
-      if (checkEvaluationTask.value.length < 5) {
+      if (selectedBankForArtificial.value.length < 5) {
         const obj: {
           [prop: number]: string
         } = {};
         obj[item.id] = queBank.name
-        checkEvaluationTask.value.push(obj)
+        selectedBankForArtificial.value.push(obj)
       }
     })
-    // console.info("allQueBank:", allQueBanks);
     const allModes: AllModes = {};
     const allScores: AllScores = {};
     (modeList as modelItem[])?.forEach(item => {
@@ -207,6 +274,39 @@ onMounted(async () => {
       allQueBanks
     }
   }
+
+  await questionSetListForAuto().then(res => {
+    if (res) {
+      questionBankListForAuto.value = res;
+      res.forEach(item => {
+        const queBankGroupId = item.id;
+        const queBankGroupName = item.name;
+        allQueBankIdsForAuto.value[queBankGroupId] = [];
+        Reflect.set(allQueBankGroupIdMap.value, queBankGroupId, queBankGroupName);
+        if (item.question_set_list && item.question_set_list.length > 0) {
+          item.question_set_list.forEach(que => {
+            const {id, name} = que;
+            allQueBankIdsForAuto.value[queBankGroupId].push(id);
+            Reflect.set(allQueBankIdMapForAuto, id, name);
+          })
+        }
+      })
+    }
+  }).catch(e => {
+    console.error(e)
+  })
+
+  await questionSetList().then(res => {
+    if (res) {
+      res.forEach(item => {
+        const {id, name} = item;
+        allQueBankIds.value.push(id);
+        Reflect.set(allQueBankIdMap.value, id, name);
+      })
+    }
+  }).catch(e => {
+    console.error(e)
+  })
 })
 
 interface ModeNameMap {
@@ -301,19 +401,33 @@ function isRange(ranges: string[], num: number): boolean {
       <div class="except-interactive-specification">
         <!--        <div>{{checkEvaluationTaskAfterFilter}}</div>-->
         <div class="evaluation-model parameter">
-          <div class="label">评测任务：</div>
-          <el-checkbox-group class="checkboxes" v-model="checkEvaluationTask" size="large">
+          <div class="label">评测任务(手动)：</div>
+          <el-checkbox-group class="checkboxes" v-model="selectedBankForArtificial" size="large">
             <el-checkbox v-for="(queBank,id) in checkEvaluationTaskOption" :label="{[id]:(queBank as QueBank).name}" border>{{ queBank.name }}</el-checkbox>
           </el-checkbox-group>
           <div class="task-btn" @click="changeTaskBtn">{{ taskText }}</div>
         </div>
         <el-collapse-transition>
           <div v-show="isFlagTaskBtn" style="height: 300px" class="collapse">
-            <el-checkbox-group class="checkboxes" v-model="checkEvaluationTask" size="large">
-              <el-checkbox v-for="(queBank,id) in (data as MyData)?.allQueBanks" :label="{[id]:(queBank as QueBank).name}" border>{{ queBank.name }}</el-checkbox>
+            <el-checkbox-group class="checkboxes" v-model="selectedBankForArtificial" size="large">
+              <el-checkbox v-for="(queBank,id) in allQueBankObjForArtificial" :label="{[id]:(queBank as QueBank).name}" border>{{ queBank.name }}</el-checkbox>
             </el-checkbox-group>
           </div>
         </el-collapse-transition>
+        <div class="evaluation-model parameter">
+          <div class="label">评测任务(自动)：</div>
+          <div class="select-question-bank">
+            <el-cascader
+                :options="allQueBankIdsForAutoOptions"
+                :props="props"
+                v-model="selectedBankForAuto"
+                placeholder="请选择"
+                collapse-tags
+                collapse-tags-tooltip
+                clearable
+            />
+          </div>
+        </div>
         <div class="model-size parameter">
           <div class="label">模型大小：</div>
           <el-checkbox-group class="checkboxes" v-model="checkModelSize" size="large">
@@ -381,7 +495,7 @@ function isRange(ranges: string[], num: number): boolean {
         overflow-y: scroll;
         background: #f8f8f8;
         padding: 20px;
-        margin: 10px 120px 10px 115px;
+        margin: 10px 120px 10px 145px;
         box-shadow: 1px 1px 10px 3px #0000001a inset;
 
         .checkboxes {
@@ -418,7 +532,7 @@ function isRange(ranges: string[], num: number): boolean {
 
 
         .label {
-          min-width: 80px;
+          min-width: 110px;
           font-size: 14px;
         }
 
@@ -456,7 +570,7 @@ function isRange(ranges: string[], num: number): boolean {
       .evaluation-model {
         display: flex;
 
-        .checkboxes{
+        .checkboxes {
           padding-right: 80px;
         }
 
@@ -470,6 +584,14 @@ function isRange(ranges: string[], num: number): boolean {
           border-radius: 3px;
           cursor: pointer;
           z-index: 100;
+        }
+
+        .select-question-bank {
+          margin: 5px 0 5px 23px;
+
+          :deep(.el-cascader .el-input__wrapper) {
+            margin: 10px;
+          }
         }
       }
 
@@ -586,6 +708,17 @@ function isRange(ranges: string[], num: number): boolean {
       }
     }
   }
+}
+
+:deep(.el-cascader .el-input__wrapper) {
+  min-height: 40px;
+  --el-input-border-color: #00a9ce;
+  --el-input-focus-border-color: #00a9ce;
+  border-radius: 6px;
+}
+
+:deep(.el-cascader) {
+  --el-border-color-hover: #00a9ce;
 }
 
 ::-webkit-scrollbar-track-piece {
